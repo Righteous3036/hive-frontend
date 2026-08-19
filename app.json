@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "Hive",
+    "slug": "hive-ug",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "hive",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ug.hive"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png.png",
+        "backgroundColor": "#00467F"
+      },
+      "package": "com.ug.hive",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-image-picker",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#00467F"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "174bf3f7-3c60-4746-bd9e-9711c13f1d44"
+      }
+    }
+  }
+}
