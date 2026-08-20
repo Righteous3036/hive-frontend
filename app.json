@@ -17,9 +17,7 @@
         "backgroundColor": "#00467F"
       },
       "package": "com.ug.hive",
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ]
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "web": {
       "bundler": "metro",
