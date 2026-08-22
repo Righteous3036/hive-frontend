@@ -11,6 +11,7 @@ import { UserProvider } from "../components/UserContext";
 
 import AdminDashboardScreen from "../screens/Admin/AdminDashboardScreen";
 import AIMatchingScreen from "../screens/Auth/AIMatchingScreen";
+import ForgotPasswordScreen from "../screens/Auth/ForgotPasswordScreen";
 import LoginScreen from "../screens/Auth/LoginScreen";
 import RegisterScreen from "../screens/Auth/RegisterScreen";
 import CreateGroupScreen from "../screens/Groups/CreateGroupScreen";
@@ -62,6 +63,10 @@ export default function AppNavigator() {
               >
                 <Stack.Screen name="Welcome" component={WelcomeScreen} />
                 <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen
+                  name="ForgotPassword"
+                  component={ForgotPasswordScreen}
+                />
                 <Stack.Screen name="Register" component={RegisterScreen} />
                 <Stack.Screen name="Home" component={HomeScreen} />
                 <Stack.Screen
