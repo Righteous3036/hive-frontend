@@ -1,9 +1,6 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
-import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
 import React from "react";
-import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NotificationProvider } from "../components/NotificationContext";
 import { ThemeProvider } from "../components/ThemeContext";
@@ -27,27 +24,7 @@ import WelcomeScreen from "../screens/WelcomeScreen";
 
 const Stack = createStackNavigator();
 
-SplashScreen.preventAutoHideAsync();
-
 export default function AppNavigator() {
-  const [loaded] = useFonts({
-    Ionicons: require("@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf"),
-  });
-
-  React.useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#003366" />
-      </View>
-    );
-  }
-
   return (
     <SafeAreaProvider>
       <ThemeProvider>
