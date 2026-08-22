@@ -17,7 +17,10 @@
         "backgroundColor": "#00467F"
       },
       "package": "com.ug.hive",
-      "permissions": ["android.permission.RECORD_AUDIO"]
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -46,6 +49,12 @@
       "eas": {
         "projectId": "174bf3f7-3c60-4746-bd9e-9711c13f1d44"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/174bf3f7-3c60-4746-bd9e-9711c13f1d44"
     }
   }
 }
