@@ -60,7 +60,6 @@ export default function ForgotPasswordScreen({ navigation }: any) {
       if (res.data.success) {
         setStep("otp");
         startTimer();
-        setError("");
       }
     } catch (err: any) {
       setError(
@@ -77,9 +76,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-    if (value && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
+    if (value && index < 5) otpRefs.current[index + 1]?.focus();
   };
 
   const handleOtpKeyPress = (key: string, index: number) => {
@@ -577,7 +574,6 @@ export default function ForgotPasswordScreen({ navigation }: any) {
     </View>
   );
 
-  // ── MOBILE VIEW ──
   if (isMobile) {
     return (
       <SafeAreaView style={[styles.mobileSafe, { backgroundColor: "#00467F" }]}>
@@ -605,7 +601,6 @@ export default function ForgotPasswordScreen({ navigation }: any) {
     );
   }
 
-  // ── WEB VIEW ──
   return (
     <View style={[styles.webRoot, { backgroundColor: "#F5F7FF" }]}>
       <View style={styles.webLeft}>
@@ -648,7 +643,6 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  // ── MOBILE ──
   mobileSafe: { flex: 1 },
   mobileScroll: { flexGrow: 1 },
   mobileHero: {
@@ -661,8 +655,6 @@ const styles = StyleSheet.create({
   heroEmoji: { fontSize: 48, marginBottom: 8, zIndex: 1 },
   heroTitle: { fontSize: 28, fontWeight: "bold", color: "#fff", zIndex: 1 },
   heroSub: { fontSize: 14, color: "rgba(255,255,255,0.75)", zIndex: 1 },
-
-  // ── WEB ──
   webRoot: { flexDirection: "row", flex: 1 },
   webLeft: {
     width: 400,
@@ -687,8 +679,17 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     width: "100%",
   },
-
-  // ── COMMON ──
+  stepsInfo: { gap: 16 },
+  stepsInfoItem: { flexDirection: "row", alignItems: "center", gap: 14 },
+  stepsInfoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepsInfoText: { color: "rgba(255,255,255,0.85)", fontSize: 14 },
   circle1: {
     position: "absolute",
     width: 300,
@@ -707,15 +708,7 @@ const styles = StyleSheet.create({
     bottom: -60,
     left: -60,
   },
-
-  // ── FORM ──
-  formBox: {
-    margin: 16,
-    borderRadius: 20,
-    padding: 24,
-    elevation: 4,
-    gap: 12,
-  },
+  formBox: { margin: 16, borderRadius: 20, padding: 24, elevation: 4, gap: 12 },
   backRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -723,8 +716,6 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   backRowText: { color: "#00467F", fontWeight: "600", fontSize: 13 },
-
-  // ── STEPS ──
   stepRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -749,59 +740,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#E8ECF4",
     marginHorizontal: 4,
   },
-
-  // ── FORM ELEMENTS ──
   iconBox: { alignItems: "center" },
   stepEmoji: { fontSize: 52 },
   formTitle: { fontWeight: "bold", textAlign: "center" },
   formSub: { textAlign: "center", lineHeight: 22 },
-
-  // ── INPUTS ──
-  label: { fontWeight: "600" },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 12,
-    borderWidth: 1.5,
-    paddingHorizontal: 12,
-    height: 50,
-  },
-  inputIcon: { marginRight: 8 },
-  input: { flex: 1 },
-
-  // ── OTP ──
-  otpRow: {
-    flexDirection: "row",
-    gap: 10,
-    justifyContent: "center",
-    marginVertical: 8,
-  },
-  otpBox: {
-    width: 46,
-    height: 56,
-    borderRadius: 12,
-    borderWidth: 2,
-    fontSize: 22,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-
-  // ── BUTTONS ──
-  btn: {
-    backgroundColor: "#00467F",
-    borderRadius: 12,
-    height: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 4,
-  },
-  btnText: { color: "#fff", fontWeight: "bold" },
-  resendBtn: { alignItems: "center", paddingVertical: 10 },
-  resendText: { fontWeight: "500" },
-
-  // ── MESSAGES ──
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
@@ -824,23 +766,47 @@ const styles = StyleSheet.create({
     borderColor: "#C3F0CA",
   },
   successText: { color: "#2E7D32", fontSize: 13, flex: 1 },
-
-  // ── PASSWORD STRENGTH ──
+  label: { fontWeight: "600" },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    height: 50,
+  },
+  inputIcon: { marginRight: 8 },
+  input: { flex: 1 },
+  otpRow: {
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "center",
+    marginVertical: 8,
+  },
+  otpBox: {
+    width: 46,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 2,
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  btn: {
+    backgroundColor: "#00467F",
+    borderRadius: 12,
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  btnText: { color: "#fff", fontWeight: "bold" },
+  resendBtn: { alignItems: "center", paddingVertical: 10 },
+  resendText: { fontWeight: "500" },
   strengthRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   strengthTrack: { flex: 1, height: 4, borderRadius: 2 },
   strengthFill: { height: 4, borderRadius: 2 },
   strengthLabel: { fontSize: 11, fontWeight: "600", width: 55 },
-
-  // ── STEPS INFO (WEB) ──
-  stepsInfo: { gap: 16 },
-  stepsInfoItem: { flexDirection: "row", alignItems: "center", gap: 14 },
-  stepsInfoIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepsInfoText: { color: "rgba(255,255,255,0.85)", fontSize: 14 },
 });
