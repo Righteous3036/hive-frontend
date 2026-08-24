@@ -13,7 +13,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#00467F"
       },
       "package": "com.ug.hive",
