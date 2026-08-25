@@ -10,7 +10,11 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "target": "ES2020",
-    "lib": ["dom", "esnext"]
+    "lib": ["dom", "esnext"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules", "app"],

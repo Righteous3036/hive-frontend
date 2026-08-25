@@ -6,6 +6,8 @@ import { NotificationProvider } from "../components/NotificationContext";
 import { ThemeProvider } from "../components/ThemeContext";
 import { UserProvider } from "../components/UserContext";
 
+import * as Updates from "expo-updates";
+import { useEffect } from "react";
 import AdminDashboardScreen from "../screens/Admin/AdminDashboardScreen";
 import AIMatchingScreen from "../screens/Auth/AIMatchingScreen";
 import ForgotPasswordScreen from "../screens/Auth/ForgotPasswordScreen";
@@ -25,6 +27,22 @@ import WelcomeScreen from "../screens/WelcomeScreen";
 const Stack = createStackNavigator();
 
 export default function AppNavigator() {
+  useEffect(() => {
+    checkForUpdates();
+  }, []);
+
+  const checkForUpdates = async () => {
+    try {
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        await Updates.fetchUpdateAsync();
+        await Updates.reloadAsync();
+      }
+    } catch (err) {
+      console.log("Update check error:", err);
+    }
+  };
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>
