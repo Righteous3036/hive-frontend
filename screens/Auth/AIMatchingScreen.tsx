@@ -1,13 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import api from "../../components/api";
 import { useTheme } from "../../components/ThemeContext";
@@ -128,96 +128,23 @@ export default function AIMatchingScreen({ navigation }: any) {
     setLoading(true);
     setError("");
     try {
-      // Fetch all available groups
-      const groupsRes = await api.get("/groups");
-      const groups = groupsRes.data.groups || [];
-
-      if (groups.length === 0) {
-        setError(
-          "No groups available yet. You can browse groups from the Home screen.",
-        );
-        setDone(true);
-        setLoading(false);
-        return;
-      }
-
-      // Build group list for AI
-      const groupList = groups
-        .slice(0, 20)
-        .map(
-          (g: any) =>
-            `ID: ${g.id} | Name: ${g.name} | Category: ${g.category} | Description: ${g.description} | Tags: ${(g.tags || []).join(", ")}`,
-        )
-        .join("\n");
-
-      const prompt = `You are a university group matching assistant for the University of Ghana.
-
-A student just registered with the following profile:
-- Name: ${user?.name || "Student"}
-- Department: ${user?.department || "Unknown"}
-- Level: ${user?.level || "Unknown"}
-
-They answered these questions about their interests:
-Q1 - Academic interest: ${userAnswers[0]}
-Q2 - Activities they enjoy: ${userAnswers[1]}
-Q3 - Availability: ${userAnswers[2]}
-Q4 - University goals: ${userAnswers[3]}
-Q5 - Preferred group environment: ${userAnswers[4]}
-
-Here are the available campus groups:
-${groupList}
-
-Based on the student's interests and answers, recommend the TOP 3 most suitable groups.
-
-Respond ONLY with a valid JSON array, no explanation, no markdown, no extra text:
-[
-  {
-    "group_id": <number>,
-    "match_percentage": <number between 75 and 99>,
-    "reason": "<one sentence explaining why this group matches this student>"
-  }
-]`;
-
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
+      const res = await api.post("/groups/ai-match", {
+        answers: userAnswers,
       });
 
-      const aiData = await response.json();
-      console.log("AI response:", JSON.stringify(aiData));
-
-      const rawText = aiData.content?.[0]?.text || "[]";
-      console.log("Raw AI text:", rawText);
-
-      const cleaned = rawText.replace(/```json|```/g, "").trim();
-      const recommendations = JSON.parse(cleaned);
-
-      const matchedGroups = recommendations
-        .map((rec: any) => {
-          const group = groups.find(
-            (g: any) => Number(g.id) === Number(rec.group_id),
-          );
-          if (!group) return null;
-          return {
-            ...group,
-            match_percentage: rec.match_percentage,
-            reason: rec.reason,
-          };
-        })
-        .filter(Boolean);
-
-      setMatches(matchedGroups);
+      if (res.data.success && res.data.matches.length > 0) {
+        setMatches(res.data.matches);
+      } else {
+        setError("No matches found. Browse groups from the Home screen.");
+        setMatches([]);
+      }
       setDone(true);
     } catch (err: any) {
-      console.log("AI matching error:", err?.message || err);
+      console.log("AI matching error:", err?.response?.data || err?.message);
       setError(
         "Could not get AI recommendations. Showing popular groups instead.",
       );
+
       // Fallback — show first 3 groups
       try {
         const fallbackRes = await api.get("/groups");
@@ -225,8 +152,8 @@ Respond ONLY with a valid JSON array, no explanation, no markdown, no extra text
           .slice(0, 3)
           .map((g: any) => ({
             ...g,
-            match_percentage: Math.floor(Math.random() * 20) + 75,
-            reason: `This ${g.category} group matches your university interests and goals.`,
+            match_percentage: Math.floor(Math.random() * 15) + 80,
+            reason: `This ${g.category} group is popular among students with similar interests.`,
           }));
         setMatches(fallback);
       } catch {}
@@ -295,7 +222,7 @@ Respond ONLY with a valid JSON array, no explanation, no markdown, no extra text
               { color: theme.subText, fontSize: fontSizes.sm },
             ]}
           >
-            Our AI is analysing your interests and matching you with the best
+            Claude AI is analysing your interests and finding your perfect
             campus groups
           </Text>
           <ActivityIndicator
@@ -357,7 +284,8 @@ Respond ONLY with a valid JSON array, no explanation, no markdown, no extra text
                 { color: theme.subText, fontSize: fontSizes.sm },
               ]}
             >
-              Based on your interests, our AI recommends these groups for you
+              Claude AI personally matched these groups to your interests and
+              goals
             </Text>
           </View>
 

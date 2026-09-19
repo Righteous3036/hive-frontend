@@ -35,9 +35,10 @@
           "backgroundColor": "#0A1F44"
         }
       ],
-      "expo-router",
       "expo-web-browser",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-font",
+      "expo-status-bar"
     ],
     "updates": {
       "url": "https://u.expo.dev/174bf3f7-3c60-4746-bd9e-9711c13f1d44",
