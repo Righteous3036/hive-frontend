@@ -160,6 +160,7 @@ export default function RegisterScreen({ navigation }: any) {
         setToken(res.data.token);
         setUser({
           ...res.data.user,
+          token: res.data.token,
           profile_picture: null,
           cover_photo: null,
           bio: "",

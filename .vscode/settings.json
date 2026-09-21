@@ -4,6 +4,7 @@
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
   },
+  "json.schemaDownload.enable": false,
   "typescript.validate.enable": true,
   "javascript.validate.enable": true,
   "typescript.tsdk": "node_modules/typescript/lib"

@@ -50,11 +50,15 @@ export default function LoginScreen({ navigation }: any) {
           setLoading(false);
           return;
         }
+        console.log("Login response keys:", Object.keys(res.data));
+        console.log("Login token value:", res.data.token, "| accessToken:", res.data.accessToken);
         setToken(res.data.token);
         setUser({
           ...res.data.user,
+          token: res.data.token,
           profile_picture: null,
           cover_photo: null,
+          bio: "",
         });
         try {
           const profileRes = await api.get("/users/profile");
@@ -72,6 +76,7 @@ export default function LoginScreen({ navigation }: any) {
               profile_color: u.profile_color || "#00467F",
               profile_picture: u.profile_picture || null,
               cover_photo: u.cover_photo || null,
+              token: res.data.token,
             });
           }
         } catch (e) {}

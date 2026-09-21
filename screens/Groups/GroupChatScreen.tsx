@@ -31,7 +31,7 @@ const CAT_COLORS: any = {
 
 export default function GroupChatScreen({ navigation, route }: any) {
   const { groupId, groupName, groupColor, groupCategory, isAdmin } =
-    route.params;
+    route?.params || {};
   const { theme, fontSizes } = useTheme();
   const { user } = useUser();
 
@@ -52,9 +52,14 @@ export default function GroupChatScreen({ navigation, route }: any) {
   const msgIdsRef = useRef<Set<any>>(new Set());
 
   useEffect(() => {
-    fetchMessages(true);
+    if (groupId) {
+      fetchMessages(true);
+    } else {
+      setLoading(false);
+    }
     return () => stopPolling();
-  }, []);
+  }, [groupId]);
+
 
   const fetchMessages = async (initial = false) => {
     try {
@@ -359,8 +364,72 @@ export default function GroupChatScreen({ navigation, route }: any) {
     );
   };
 
+  if (!groupId) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+        <View style={[styles.header, { backgroundColor: color }]}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.headerInfo}>
+            <Text style={[styles.headerTitle, { fontSize: fontSizes.md }]}>
+              Chat
+            </Text>
+          </View>
+        </View>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 24,
+          }}
+        >
+          <Text style={{ fontSize: 44, marginBottom: 12 }}>💬</Text>
+          <Text
+            style={{
+              fontSize: fontSizes.xl,
+              fontWeight: "bold",
+              color: theme.text,
+              marginBottom: 8,
+            }}
+          >
+            Chat Not Found
+          </Text>
+          <Text
+            style={{
+              fontSize: fontSizes.sm,
+              color: theme.subText,
+              textAlign: "center",
+              marginBottom: 20,
+            }}
+          >
+            No active chat session was found for this group.
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: color,
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              borderRadius: 12,
+            }}
+            onPress={() => navigation.navigate("Home")}
+          >
+            <Text style={{ color: "#fff", fontWeight: "bold" }}>
+              Back to Groups
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+
       {/* Header */}
       <View style={[styles.header, { backgroundColor: color }]}>
         <TouchableOpacity

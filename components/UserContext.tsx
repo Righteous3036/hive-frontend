@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { clearToken, setToken } from "./api";
 
 export type User = {
   id: number;
@@ -12,6 +14,7 @@ export type User = {
   profile_picture: string | null;
   cover_photo: string | null;
   bio: string;
+  token?: string;
 };
 
 type UserContextType = {
@@ -23,20 +26,63 @@ type UserContextType = {
 const UserContext = createContext<UserContextType>({
   user: null,
   setUser: () => {},
-  getInitials: () => 'U',
+  getInitials: () => "U",
 });
 
 export const useUser = () => useContext(UserContext);
 
-export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+export const getStoredUser = async (): Promise<User | null> => {
+  try {
+    const raw = await AsyncStorage.getItem("auth_user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+export function UserProvider({
+  children,
+  initialUser,
+}: {
+  children: React.ReactNode;
+  initialUser?: User | null;
+}) {
+  const [user, setUserState] = useState<User | null>(initialUser ?? null);
+
+  useEffect(() => {
+    if (!user) {
+      // Hydrate cached user from AsyncStorage if not already passed via prop
+      getStoredUser().then((stored) => {
+        if (stored) {
+          setUserState((prev) => prev || stored);
+        }
+      });
+    }
+  }, []);
+
+
+  const setUser = (newUser: User | null) => {
+    if (newUser?.token) {
+      setToken(newUser.token);
+    } else if (!newUser) {
+      clearToken();
+    }
+
+    if (newUser) {
+      void AsyncStorage.setItem("auth_user", JSON.stringify(newUser));
+    } else {
+      void AsyncStorage.removeItem("auth_user");
+    }
+
+    setUserState(newUser);
+  };
 
   const getInitials = () => {
-    if (!user?.name) return 'U';
+    if (!user?.name) return "U";
     return user.name
-      .split(' ')
+      .split(" ")
       .map((n: string) => n[0])
-      .join('')
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -47,3 +93,4 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     </UserContext.Provider>
   );
 }
+

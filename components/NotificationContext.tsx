@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import api from './api';
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import api, { getToken } from "./api";
+import { useUser } from "./UserContext";
 
 type NotificationContextType = {
   unreadCount: number;
@@ -14,38 +15,47 @@ const NotificationContext = createContext<NotificationContextType>({
 export const useNotifications = () => useContext(NotificationContext);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useUser();
   const [unreadCount, setUnreadCount] = useState(0);
   const intervalRef = useRef<any>(null);
 
   const refreshUnread = async () => {
+    if (!getToken() && !user) return;
     try {
-      const res = await api.get('/notifications/unread-count');
+      const res = await api.get("/notifications/unread-count");
       if (res.data.success) {
         setUnreadCount(res.data.count);
       }
     } catch {}
   };
 
-  const startPolling = () => {
-    refreshUnread();
-    intervalRef.current = setInterval(refreshUnread, 5000);
-  };
-
-  const stopPolling = () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  };
-
   useEffect(() => {
-    startPolling();
-    return () => stopPolling();
-  }, []);
+    const isAuthenticated = !!(user || getToken());
+
+    if (isAuthenticated) {
+      refreshUnread();
+      if (!intervalRef.current) {
+        intervalRef.current = setInterval(refreshUnread, 10000);
+      }
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      setUnreadCount(0);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [user]);
 
   return (
     <NotificationContext.Provider value={{ unreadCount, refreshUnread }}>
       {children}
     </NotificationContext.Provider>
   );
-}
+}

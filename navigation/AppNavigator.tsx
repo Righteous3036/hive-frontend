@@ -1,13 +1,13 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NotificationProvider } from "../components/NotificationContext";
 import { ThemeProvider } from "../components/ThemeContext";
-import { UserProvider } from "../components/UserContext";
+import { getStoredUser, User, UserProvider } from "../components/UserContext";
+import api, { clearToken, getToken, loadToken } from "../components/api";
 
-import * as Updates from "expo-updates";
-import { useEffect } from "react";
 import AdminDashboardScreen from "../screens/Admin/AdminDashboardScreen";
 import AIMatchingScreen from "../screens/Auth/AIMatchingScreen";
 import ForgotPasswordScreen from "../screens/Auth/ForgotPasswordScreen";
@@ -27,42 +27,103 @@ import WelcomeScreen from "../screens/WelcomeScreen";
 const Stack = createStackNavigator();
 
 export default function AppNavigator() {
+  const [isReady, setIsReady] = useState(false);
+  const [initialRoute, setInitialRoute] = useState<string>("Welcome");
+  const [restoredUser, setRestoredUser] = useState<User | null>(null);
+
   useEffect(() => {
-    checkForUpdates();
+    async function initAuth() {
+      try {
+        await loadToken();
+        const token = getToken();
+        if (token) {
+          // Check cached user in storage first for fast startup
+          const cachedUser = await getStoredUser();
+          if (cachedUser) {
+            setRestoredUser(cachedUser);
+            setInitialRoute(
+              cachedUser.role === "admin" ? "AdminDashboard" : "Home",
+            );
+          }
+
+          // Verify token and fetch fresh profile from API
+          try {
+            const res = await api.get("/users/profile");
+            if (res.data.success && res.data.user) {
+              const u = res.data.user;
+              const fullUser: User = {
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                student_id: u.student_id,
+                department: u.department,
+                level: u.level,
+                role: u.role,
+                bio: u.bio || "",
+                profile_color: u.profile_color || "#00467F",
+                profile_picture: u.profile_picture || null,
+                cover_photo: u.cover_photo || null,
+                token,
+              };
+              setRestoredUser(fullUser);
+              setInitialRoute(u.role === "admin" ? "AdminDashboard" : "Home");
+            }
+          } catch (err: any) {
+            // If token expired (401), clear token and revert to Welcome
+            if (err.response?.status === 401) {
+              clearToken();
+              setRestoredUser(null);
+              setInitialRoute("Welcome");
+            }
+          }
+        }
+      } catch (err) {
+        console.log("Auth init error:", err);
+      } finally {
+        setIsReady(true);
+      }
+    }
+
+    initAuth();
   }, []);
 
-  const checkForUpdates = async () => {
-    try {
-      const update = await Updates.checkForUpdateAsync();
-      if (update.isAvailable) {
-        await Updates.fetchUpdateAsync();
-        await Updates.reloadAsync();
-      }
-    } catch (err) {
-      console.log("Update check error:", err);
-    }
-  };
+  if (!isReady) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#00467F",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <UserProvider>
+        <UserProvider initialUser={restoredUser}>
           <NotificationProvider>
             <NavigationContainer>
               <Stack.Navigator
-                initialRouteName="Welcome"
+                initialRouteName={initialRoute}
                 screenOptions={{
                   headerShown: false,
                   cardStyle: { flex: 1 },
                 }}
               >
+
                 <Stack.Screen name="Welcome" component={WelcomeScreen} />
                 <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="Register" component={RegisterScreen} />
+                <Stack.Screen name="AIMatching" component={AIMatchingScreen} />
                 <Stack.Screen
                   name="ForgotPassword"
                   component={ForgotPasswordScreen}
                 />
-                <Stack.Screen name="Register" component={RegisterScreen} />
                 <Stack.Screen name="Home" component={HomeScreen} />
                 <Stack.Screen
                   name="GroupDetails"
@@ -72,6 +133,7 @@ export default function AppNavigator() {
                   name="CreateGroup"
                   component={CreateGroupScreen}
                 />
+                <Stack.Screen name="GroupChat" component={GroupChatScreen} />
                 <Stack.Screen name="MyGroups" component={MyGroupsScreen} />
                 <Stack.Screen
                   name="Notifications"
@@ -84,8 +146,6 @@ export default function AppNavigator() {
                 />
                 <Stack.Screen name="Saved" component={SavedScreen} />
                 <Stack.Screen name="Settings" component={SettingsScreen} />
-                <Stack.Screen name="AIMatching" component={AIMatchingScreen} />
-                <Stack.Screen name="GroupChat" component={GroupChatScreen} />
               </Stack.Navigator>
             </NavigationContainer>
           </NotificationProvider>

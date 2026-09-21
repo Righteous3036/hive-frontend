@@ -41,7 +41,7 @@ const CAT_ICONS: any = {
 };
 
 export default function GroupDetailsScreen({ navigation, route }: any) {
-  const { groupId } = route.params;
+  const { groupId } = route?.params || {};
   const { theme, fontSizes } = useTheme();
   const { user } = useUser();
   const { isMobile, padding } = useResponsive();
@@ -73,8 +73,13 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
   const lastReadRef = useRef<string | null>(null);
 
   useEffect(() => {
-    fetchAll();
+    if (groupId) {
+      fetchAll();
+    } else {
+      setLoading(false);
+    }
   }, [groupId]);
+
 
   useEffect(() => {
     if (isMember || isCreator) {
@@ -98,32 +103,46 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
   const fetchAll = async () => {
     try {
       setLoading(true);
+
+      // Fetch each resource independently so one failure doesn't block the rest
       const [groupRes, membersRes, announcementsRes, membershipRes] =
         await Promise.all([
-          api.get(`/groups/${groupId}`),
-          api.get(`/groups/${groupId}/members`),
-          api.get(`/groups/${groupId}/announcements`),
-          api.get(`/groups/${groupId}/membership`),
+          api.get(`/groups/${groupId}`).catch((err) => {
+            console.log("Fetch group error:", err);
+            return null;
+          }),
+          api.get(`/groups/${groupId}/members`).catch((err) => {
+            console.log("Fetch members error:", err);
+            return null;
+          }),
+          api.get(`/groups/${groupId}/announcements`).catch((err) => {
+            console.log("Fetch announcements error:", err);
+            return null;
+          }),
+          api.get(`/groups/${groupId}/membership`).catch((err) => {
+            console.log("Fetch membership error:", err);
+            return null;
+          }),
         ]);
 
-      if (groupRes.data.success) {
+      if (groupRes?.data?.success) {
         setGroup(groupRes.data.group);
         setMemberCount(parseInt(groupRes.data.group.member_count) || 0);
       }
-      if (membersRes.data.success) setMembers(membersRes.data.members);
-      if (announcementsRes.data.success)
+      if (membersRes?.data?.success) setMembers(membersRes.data.members);
+      if (announcementsRes?.data?.success)
         setAnnouncements(announcementsRes.data.announcements);
-      if (membershipRes.data.success) {
+      if (membershipRes?.data?.success) {
         setIsMember(membershipRes.data.isMember);
         setIsPending(membershipRes.data.isPending);
         setIsCreator(
           membershipRes.data.role === "admin" &&
-            groupRes.data.group?.created_by === user?.id,
+            groupRes?.data?.group?.created_by === user?.id,
         );
         setIsGroupAdmin(membershipRes.data.role === "admin");
       }
 
-      if (membershipRes.data.role === "admin") {
+      if (membershipRes?.data?.role === "admin") {
         try {
           const reqRes = await api.get(`/groups/${groupId}/join-requests`);
           if (reqRes.data.success) setJoinRequests(reqRes.data.requests);
