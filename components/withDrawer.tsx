@@ -8,6 +8,8 @@ import { useResponsive } from './useResponsive';
 import DrawerContent from './DrawerContent';
 import MobileHeader from './MobileHeader';
 import Sidebar from './Sidebar';
+import BottomTabBar from './BottomTabBar';
+import ScreenTransition from './ui/ScreenTransition';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
 
@@ -17,9 +19,17 @@ type Props = {
   title: string;
   children: React.ReactNode;
   showBack?: boolean;
+  hideBottomTab?: boolean;
 };
 
-export default function WithDrawer({ navigation, activeScreen, title, children, showBack = false }: Props) {
+export default function WithDrawer({
+  navigation,
+  activeScreen,
+  title,
+  children,
+  showBack = false,
+  hideBottomTab = false,
+}: Props) {
   const { theme } = useTheme();
   const { isMobile } = useResponsive();
   const [open, setOpen] = useState(false);
@@ -41,17 +51,30 @@ export default function WithDrawer({ navigation, activeScreen, title, children, 
     ]).start(() => setOpen(false));
   };
 
+  // Determine if the screen is the Create screen or flow where tab bar should be hidden
+  const isCreateScreen =
+    hideBottomTab ||
+    activeScreen === 'Create Group' ||
+    activeScreen === 'Create' ||
+    activeScreen === 'CreateGroup' ||
+    title === 'Create Group' ||
+    title === 'Create';
+
   // Web — fixed sidebar
   if (!isMobile) {
     return (
       <View style={[styles.webRoot, { backgroundColor: theme.bg }]}>
         <Sidebar navigation={navigation} activeScreen={activeScreen} />
-        <View style={styles.webContent}>{children}</View>
+        <View style={styles.webContent}>
+          <ScreenTransition key={activeScreen || title}>
+            {children}
+          </ScreenTransition>
+        </View>
       </View>
     );
   }
 
-  // Mobile — sliding drawer
+  // Mobile — sliding drawer with persistent bottom tab bar (hidden on Create screen)
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
       <View style={[styles.mobileRoot, { backgroundColor: theme.bg }]}>
@@ -61,7 +84,18 @@ export default function WithDrawer({ navigation, activeScreen, title, children, 
           navigation={navigation}
           showBack={showBack}
         />
-        <View style={styles.content}>{children}</View>
+        <View style={styles.content}>
+          <ScreenTransition key={activeScreen || title}>
+            {children}
+          </ScreenTransition>
+        </View>
+
+        {!isCreateScreen && (
+          <BottomTabBar
+            navigation={navigation}
+            activeScreen={activeScreen}
+          />
+        )}
 
         {open && (
           <TouchableWithoutFeedback onPress={closeDrawer}>

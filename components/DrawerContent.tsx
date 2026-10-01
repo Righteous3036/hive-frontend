@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   Image,
@@ -9,9 +8,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useNotifications } from "./NotificationContext";
 import { useTheme } from "./ThemeContext";
 import { useUser } from "./UserContext";
+import { Radii, Shadows, Spacing } from "../constants/theme";
+import FloatingBee from "./ui/FloatingBee";
 
 const NAV = [
   { icon: "home-outline", activeIcon: "home", label: "Home", screen: "Home" },
@@ -52,7 +55,7 @@ export default function DrawerContent({
   activeScreen,
   onClose,
 }: Props) {
-  const { theme } = useTheme();
+  const { theme, fontSizes, isDarkMode } = useTheme();
   const { user, getInitials, setUser } = useUser();
   const { unreadCount } = useNotifications();
   const [showLogout, setShowLogout] = useState(false);
@@ -70,22 +73,33 @@ export default function DrawerContent({
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.sidebarBg }]}>
-      {/* Header */}
-      <View style={styles.header}>
+    <View style={[styles.root, { backgroundColor: isDarkMode ? "#141728" : "#FFFFFF" }]}>
+      {/* Header with LinearGradient */}
+      <LinearGradient
+        colors={[theme.primary, theme.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.header}
+      >
         <View style={styles.headerTop}>
           <View style={styles.logoRow}>
-            <Text style={styles.logoEmoji}>🎓</Text>
-            <Text style={styles.logoText}>Hive 🐝</Text>
+            <FloatingBee size={24} />
+            <Text style={styles.logoText}>Hive</Text>
           </View>
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Ionicons name="close" size={22} color="#fff" />
+          <TouchableOpacity
+            style={styles.closeBtn}
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Close menu"
+          >
+            <Ionicons name="close" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity
           style={styles.profileBox}
           onPress={() => go("Profile")}
+          activeOpacity={0.85}
         >
           {user?.profile_picture ? (
             <Image
@@ -96,28 +110,34 @@ export default function DrawerContent({
             <View
               style={[
                 styles.avatarFallback,
-                { backgroundColor: user?.profile_color || "#4C9BE8" },
+                { backgroundColor: user?.profile_color || theme.accent },
               ]}
             >
               <Text style={styles.avatarText}>{getInitials()}</Text>
             </View>
           )}
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name || "Student"}</Text>
-            <Text style={styles.profileDept}>
-              {user?.department || "UG Student"}
+            <Text style={styles.profileName} numberOfLines={1}>
+              {user?.name || "Student"}
+            </Text>
+            <Text style={styles.profileDept} numberOfLines={1}>
+              {user?.department || "Campus Member"}
             </Text>
           </View>
           <Ionicons
             name="chevron-forward"
-            size={16}
-            color="rgba(255,255,255,0.6)"
+            size={18}
+            color="rgba(255,255,255,0.7)"
           />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
-      {/* Nav */}
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+      {/* Navigation List */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.nav}>
           {NAV.map((item, i) => {
             const active =
@@ -125,17 +145,23 @@ export default function DrawerContent({
             return (
               <TouchableOpacity
                 key={i}
-                style={[styles.navItem, active && styles.navItemActive]}
+                style={[
+                  styles.navItem,
+                  active && {
+                    backgroundColor: theme.primaryLight,
+                  },
+                ]}
                 onPress={() => go(item.screen)}
+                activeOpacity={0.7}
               >
                 <View style={styles.navIconWrap}>
                   <Ionicons
                     name={(active ? item.activeIcon : item.icon) as any}
-                    size={22}
-                    color={active ? "#00467F" : theme.subText}
+                    size={20}
+                    color={active ? theme.primary : theme.textSecondary}
                   />
                   {item.label === "Notifications" && unreadCount > 0 && (
-                    <View style={styles.badge}>
+                    <View style={[styles.badge, { backgroundColor: theme.error }]}>
                       <Text style={styles.badgeText}>
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </Text>
@@ -145,42 +171,60 @@ export default function DrawerContent({
                 <Text
                   style={[
                     styles.navLabel,
-                    { color: active ? "#00467F" : theme.subText },
-                    active && styles.navLabelActive,
+                    {
+                      color: active ? theme.primary : theme.text,
+                      fontSize: fontSizes.md,
+                      fontWeight: active ? "700" : "500",
+                    },
                   ]}
                 >
                   {item.label}
                 </Text>
-                {active && <View style={styles.activeBar} />}
+                {active && (
+                  <View
+                    style={[styles.activeBar, { backgroundColor: theme.primary }]}
+                  />
+                )}
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Create Group */}
+        {/* Create Group Button */}
         <View style={[styles.section, { borderTopColor: theme.border }]}>
           <TouchableOpacity
-            style={styles.createBtn}
             onPress={() => go("CreateGroup")}
+            activeOpacity={0.85}
+            style={[styles.createBtnWrapper, Shadows.primaryGlow]}
           >
-            <Ionicons name="add-circle" size={20} color="#fff" />
-            <Text style={styles.createBtnText}>Create New Group</Text>
+            <LinearGradient
+              colors={[theme.primary, theme.accent]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.createBtn}
+            >
+              <Ionicons name="add-circle" size={20} color="#FFFFFF" />
+              <Text style={styles.createBtnText}>Create New Group</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Logout */}
+      {/* Logout Footer */}
       <View style={[styles.footer, { borderTopColor: theme.border }]}>
         <TouchableOpacity
-          style={styles.logoutBtn}
+          style={[styles.logoutBtn, { backgroundColor: theme.errorLight, borderColor: theme.error + "40" }]}
           onPress={() => setShowLogout(true)}
+          activeOpacity={0.7}
         >
-          <Ionicons name="log-out-outline" size={20} color="#FF6B6B" />
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Ionicons name="log-out-outline" size={18} color={theme.error} />
+          <Text style={[styles.logoutText, { color: theme.error, fontSize: fontSizes.sm }]}>
+            Log Out
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Logout Modal */}
+      {/* Logout Confirmation Modal */}
       <Modal
         visible={showLogout}
         transparent
@@ -188,15 +232,23 @@ export default function DrawerContent({
         onRequestClose={() => setShowLogout(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalBox, { backgroundColor: theme.card }]}>
-            <View style={styles.modalIcon}>
-              <Ionicons name="log-out-outline" size={30} color="#FF6B6B" />
+          <View
+            style={[
+              styles.modalBox,
+              { backgroundColor: theme.card, borderColor: theme.border },
+              Shadows.lg,
+            ]}
+          >
+            <View
+              style={[styles.modalIcon, { backgroundColor: theme.errorLight }]}
+            >
+              <Ionicons name="log-out-outline" size={32} color={theme.error} />
             </View>
-            <Text style={[styles.modalTitle, { color: theme.text }]}>
+            <Text style={[styles.modalTitle, { color: theme.text, fontSize: fontSizes.xl }]}>
               Log Out
             </Text>
-            <Text style={[styles.modalMsg, { color: theme.subText }]}>
-              Are you sure you want to log out?
+            <Text style={[styles.modalMsg, { color: theme.textSecondary, fontSize: fontSizes.sm }]}>
+              Are you sure you want to log out of Hive?
             </Text>
             <View style={styles.modalBtns}>
               <TouchableOpacity
@@ -207,13 +259,18 @@ export default function DrawerContent({
                 onPress={() => setShowLogout(false)}
               >
                 <Text
-                  style={[styles.modalCancelText, { color: theme.subText }]}
+                  style={[styles.modalCancelText, { color: theme.text, fontSize: fontSizes.sm }]}
                 >
                   Cancel
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalConfirm} onPress={logout}>
-                <Text style={styles.modalConfirmText}>Log Out</Text>
+              <TouchableOpacity
+                style={[styles.modalConfirm, { backgroundColor: theme.error }]}
+                onPress={logout}
+              >
+                <Text style={[styles.modalConfirmText, { fontSize: fontSizes.sm }]}>
+                  Log Out
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -226,25 +283,24 @@ export default function DrawerContent({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    backgroundColor: "#00467F",
-    paddingTop: 56,
+    paddingTop: 52,
     paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.lg,
   },
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 20,
+    marginBottom: Spacing.lg,
   },
   logoRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   logoEmoji: { fontSize: 24 },
-  logoText: { fontSize: 18, fontWeight: "bold", color: "#fff" },
+  logoText: { fontSize: 20, fontWeight: "800", color: "#FFFFFF", letterSpacing: -0.5 },
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -252,16 +308,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderRadius: 14,
-    padding: 12,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: Radii.lg,
+    padding: Spacing.md,
   },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderColor: "rgba(255,255,255,0.4)",
   },
   avatarFallback: {
     width: 44,
@@ -270,134 +326,113 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderColor: "rgba(255,255,255,0.4)",
   },
-  avatarText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  avatarText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
   profileInfo: { flex: 1 },
-  profileName: { fontSize: 15, fontWeight: "bold", color: "#fff" },
-  profileDept: { fontSize: 12, color: "rgba(255,255,255,0.7)" },
+  profileName: { fontSize: 15, fontWeight: "700", color: "#FFFFFF" },
+  profileDept: { fontSize: 12, color: "rgba(255,255,255,0.8)", marginTop: 1 },
   scroll: { flex: 1 },
-  nav: { padding: 12, gap: 2 },
+  scrollContent: { paddingVertical: Spacing.sm },
+  nav: { paddingHorizontal: Spacing.md, gap: 4 },
   navItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
-    paddingVertical: 13,
+    paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: Radii.md,
     position: "relative",
   },
-  navItemActive: { backgroundColor: "#00467F12" },
-  navIconWrap: { position: "relative" },
+  navIconWrap: { position: "relative", width: 24, alignItems: "center" },
   badge: {
     position: "absolute",
-    top: -4,
-    right: -6,
+    top: -5,
+    right: -8,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: "#FF6B6B",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 3,
+    paddingHorizontal: 2,
   },
-  badgeText: { color: "#fff", fontSize: 9, fontWeight: "bold" },
-  navLabel: { fontSize: 15, fontWeight: "500", flex: 1 },
-  navLabelActive: { fontWeight: "700" },
+  badgeText: { color: "#FFFFFF", fontSize: 9, fontWeight: "800" },
+  navLabel: { flex: 1 },
   activeBar: {
     width: 4,
-    height: 20,
+    height: 18,
     borderRadius: 2,
-    backgroundColor: "#00467F",
   },
-  section: { borderTopWidth: 1, padding: 16, gap: 10 },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 1.2,
-    marginBottom: 4,
+  section: { borderTopWidth: 1, padding: Spacing.lg, marginTop: Spacing.sm },
+  createBtnWrapper: {
+    borderRadius: Radii.md,
+    overflow: "hidden",
   },
   createBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "#00467F",
-    borderRadius: 12,
-    height: 48,
+    height: 46,
+    borderRadius: Radii.md,
   },
-  createBtnText: { color: "#fff", fontWeight: "600", fontSize: 14 },
-  adminBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  adminIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: "#00467F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  adminTitle: { fontSize: 13, fontWeight: "700", color: "#00467F" },
-  adminSub: { fontSize: 11, marginTop: 1 },
-  footer: { borderTopWidth: 1, padding: 16 },
+  createBtnText: { color: "#FFFFFF", fontWeight: "700" },
+  footer: { borderTopWidth: 1, padding: Spacing.lg },
   logoutBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    backgroundColor: "#FFF0F0",
-    borderRadius: 12,
-    height: 48,
+    gap: 8,
+    borderRadius: Radii.md,
+    height: 44,
     borderWidth: 1,
-    borderColor: "#FFD0D0",
   },
-  logoutText: { color: "#FF6B6B", fontWeight: "600", fontSize: 14 },
+  logoutText: { fontWeight: "700" },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
     justifyContent: "center",
+    padding: Spacing.xl,
   },
-  modalBox: { borderRadius: 20, padding: 28, width: 300, alignItems: "center" },
+  modalBox: {
+    borderRadius: Radii.xl,
+    padding: Spacing['2xl'],
+    width: "100%",
+    maxWidth: 320,
+    alignItems: "center",
+    borderWidth: 1,
+  },
   modalIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#FFF0F0",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: Spacing.md,
   },
-  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 8 },
+  modalTitle: { fontWeight: "800", marginBottom: Spacing.xs },
   modalMsg: {
-    fontSize: 14,
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 24,
+    lineHeight: 20,
+    marginBottom: Spacing.xl,
   },
   modalBtns: { flexDirection: "row", gap: 12, width: "100%" },
   modalCancel: {
     flex: 1,
-    height: 46,
-    borderRadius: 12,
+    height: 44,
+    borderRadius: Radii.md,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
+    borderWidth: 1,
   },
-  modalCancelText: { fontSize: 14, fontWeight: "600" },
+  modalCancelText: { fontWeight: "600" },
   modalConfirm: {
     flex: 1,
-    height: 46,
-    borderRadius: 12,
+    height: 44,
+    borderRadius: Radii.md,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FF6B6B",
   },
-  modalConfirmText: { color: "#fff", fontSize: 14, fontWeight: "bold" },
+  modalConfirmText: { color: "#FFFFFF", fontWeight: "700" },
 });

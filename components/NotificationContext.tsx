@@ -1,15 +1,15 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import api, { getToken } from "./api";
 import { useUser } from "./UserContext";
 
 type NotificationContextType = {
   unreadCount: number;
-  refreshUnread: () => void;
+  refreshUnread: () => Promise<void>;
 };
 
 const NotificationContext = createContext<NotificationContextType>({
   unreadCount: 0,
-  refreshUnread: () => {},
+  refreshUnread: async () => {},
 });
 
 export const useNotifications = () => useContext(NotificationContext);
@@ -19,15 +19,44 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [unreadCount, setUnreadCount] = useState(0);
   const intervalRef = useRef<any>(null);
 
-  const refreshUnread = async () => {
-    if (!getToken() && !user) return;
+  const refreshUnread = useCallback(async () => {
+    const token = getToken();
+    if (!token && !user) {
+      setUnreadCount(0);
+      return;
+    }
+
     try {
+      // 1. Try dedicated unread-count endpoint
       const res = await api.get("/notifications/unread-count");
-      if (res.data.success) {
-        setUnreadCount(res.data.count);
+      if (res.data?.success) {
+        const count =
+          typeof res.data.count === "number"
+            ? res.data.count
+            : typeof res.data.unreadCount === "number"
+            ? res.data.unreadCount
+            : typeof res.data.unread_count === "number"
+            ? res.data.unread_count
+            : 0;
+        setUnreadCount(count);
+        return;
       }
-    } catch {}
-  };
+    } catch {
+      // 2. Fallback: If /notifications/unread-count is unavailable, calculate from /notifications
+      try {
+        const listRes = await api.get("/notifications");
+        if (listRes.data?.success && Array.isArray(listRes.data.notifications)) {
+          const count = listRes.data.notifications.filter(
+            (n: any) => !n.is_read && !n.read
+          ).length;
+          setUnreadCount(count);
+          return;
+        }
+      } catch {
+        // Silently preserve current count or error state
+      }
+    }
+  }, [user]);
 
   useEffect(() => {
     const isAuthenticated = !!(user || getToken());
@@ -35,7 +64,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     if (isAuthenticated) {
       refreshUnread();
       if (!intervalRef.current) {
-        intervalRef.current = setInterval(refreshUnread, 10000);
+        // Real-time synchronization interval
+        intervalRef.current = setInterval(refreshUnread, 8000);
       }
     } else {
       if (intervalRef.current) {
@@ -51,7 +81,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         intervalRef.current = null;
       }
     };
-  }, [user]);
+  }, [user, refreshUnread]);
 
   return (
     <NotificationContext.Provider value={{ unreadCount, refreshUnread }}>

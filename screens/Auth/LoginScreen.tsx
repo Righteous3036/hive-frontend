@@ -16,6 +16,7 @@ import api, { setToken } from "../../components/api";
 import { useTheme } from "../../components/ThemeContext";
 import { useUser } from "../../components/UserContext";
 import { useResponsive } from "../../components/useResponsive";
+import { Palette, Shadows, Spacing, Radii } from "../../constants/theme";
 
 export default function LoginScreen({ navigation }: any) {
   const { isMobile } = useResponsive();
@@ -73,7 +74,7 @@ export default function LoginScreen({ navigation }: any) {
               level: u.level,
               role: u.role,
               bio: u.bio || "",
-              profile_color: u.profile_color || "#00467F",
+              profile_color: u.profile_color || Palette.primary,
               profile_picture: u.profile_picture || null,
               cover_photo: u.cover_photo || null,
               token: res.data.token,
@@ -109,86 +110,98 @@ export default function LoginScreen({ navigation }: any) {
       <Text
         style={[
           styles.formSub,
-          { color: theme.subText, fontSize: fontSizes.sm },
+          { color: theme.textSecondary, fontSize: fontSizes.sm },
         ]}
       >
         Sign in to your account to continue
       </Text>
 
       {error.length > 0 && (
-        <View style={styles.errorBox}>
-          <Ionicons name="alert-circle-outline" size={16} color="#FF6B6B" />
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={[styles.errorBox, { backgroundColor: theme.errorLight, borderColor: theme.error }]}>
+          <Ionicons name="alert-circle-outline" size={16} color={theme.error} />
+          <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
+          <TouchableOpacity
+            onPress={() => setError("")}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Dismiss error"
+            accessibilityRole="button"
+          >
+            <Ionicons name="close" size={14} color={theme.error} />
+          </TouchableOpacity>
         </View>
       )}
 
-      {/* Role Selector */}
+      {/* Role Selector — Segmented Control */}
       <View style={styles.fieldGroup}>
         <Text
           style={[
             styles.label,
-            { color: theme.subText, fontSize: fontSizes.xs },
+            { color: theme.textSecondary, fontSize: fontSizes.xs },
           ]}
         >
           I am signing in as a
         </Text>
-        <View style={styles.roleRow}>
+        <View style={[styles.roleRow, { backgroundColor: theme.inputBg, borderColor: theme.border }]}>
           <TouchableOpacity
             style={[
               styles.roleBtn,
-              { borderColor: theme.border, backgroundColor: theme.inputBg },
               role === "student" && styles.roleBtnActive,
             ]}
             onPress={() => setRole("student")}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: role === "student" }}
+            accessibilityLabel="Sign in as student"
           >
             <Ionicons
               name="person-outline"
-              size={20}
-              color={role === "student" ? "#fff" : theme.subText}
+              size={18}
+              color={role === "student" ? "#fff" : theme.textSecondary}
             />
             <Text
               style={[
                 styles.roleBtnText,
-                { color: role === "student" ? "#fff" : theme.subText },
+                { color: role === "student" ? "#fff" : theme.textSecondary },
               ]}
             >
               Student
             </Text>
             {role === "student" && (
-              <Ionicons name="checkmark-circle" size={16} color="#fff" />
+              <Ionicons name="checkmark-circle" size={14} color="#fff" />
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[
               styles.roleBtn,
-              { borderColor: theme.border, backgroundColor: theme.inputBg },
               role === "admin" && styles.roleBtnAdminActive,
             ]}
             onPress={() => setRole("admin")}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: role === "admin" }}
+            accessibilityLabel="Sign in as admin"
           >
             <Ionicons
               name="shield-checkmark-outline"
-              size={20}
-              color={role === "admin" ? "#fff" : theme.subText}
+              size={18}
+              color={role === "admin" ? "#fff" : theme.textSecondary}
             />
             <Text
               style={[
                 styles.roleBtnText,
-                { color: role === "admin" ? "#fff" : theme.subText },
+                { color: role === "admin" ? "#fff" : theme.textSecondary },
               ]}
             >
               Admin
             </Text>
             {role === "admin" && (
-              <Ionicons name="checkmark-circle" size={16} color="#fff" />
+              <Ionicons name="checkmark-circle" size={14} color="#fff" />
             )}
           </TouchableOpacity>
         </View>
       </View>
 
       <Text
-        style={[styles.label, { color: theme.subText, fontSize: fontSizes.xs }]}
+        style={[styles.label, { color: theme.textSecondary, fontSize: fontSizes.xs }]}
       >
         Email Address
       </Text>
@@ -201,22 +214,23 @@ export default function LoginScreen({ navigation }: any) {
         <Ionicons
           name="mail-outline"
           size={18}
-          color={theme.subText}
+          color={theme.textSecondary}
           style={styles.inputIcon}
         />
         <TextInput
           style={[styles.input, { color: theme.text, fontSize: fontSizes.md }]}
           placeholder="Enter your university email"
-          placeholderTextColor={theme.subText}
+          placeholderTextColor={theme.textTertiary}
           keyboardType="email-address"
           autoCapitalize="none"
           value={email}
           onChangeText={setEmail}
+          accessibilityLabel="Email address input"
         />
       </View>
 
       <Text
-        style={[styles.label, { color: theme.subText, fontSize: fontSizes.xs }]}
+        style={[styles.label, { color: theme.textSecondary, fontSize: fontSizes.xs }]}
       >
         Password
       </Text>
@@ -229,22 +243,28 @@ export default function LoginScreen({ navigation }: any) {
         <Ionicons
           name="lock-closed-outline"
           size={18}
-          color={theme.subText}
+          color={theme.textSecondary}
           style={styles.inputIcon}
         />
         <TextInput
           style={[styles.input, { color: theme.text, fontSize: fontSizes.md }]}
           placeholder="Enter your password"
-          placeholderTextColor={theme.subText}
+          placeholderTextColor={theme.textTertiary}
           secureTextEntry={!showPassword}
           value={password}
           onChangeText={setPassword}
+          accessibilityLabel="Password input"
         />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+        <TouchableOpacity
+          onPress={() => setShowPassword(!showPassword)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+          accessibilityRole="button"
+        >
           <Ionicons
             name={showPassword ? "eye-outline" : "eye-off-outline"}
             size={18}
-            color={theme.subText}
+            color={theme.textSecondary}
           />
         </TouchableOpacity>
       </View>
@@ -252,6 +272,8 @@ export default function LoginScreen({ navigation }: any) {
       <TouchableOpacity
         style={styles.forgotRow}
         onPress={() => navigation.navigate("ForgotPassword")}
+        accessibilityRole="link"
+        accessibilityLabel="Forgot password"
       >
         <Text style={[styles.forgotText, { fontSize: fontSizes.xs }]}>
           Forgot Password?
@@ -262,7 +284,10 @@ export default function LoginScreen({ navigation }: any) {
         style={[styles.loginBtn, loading && { opacity: 0.7 }]}
         onPress={handleLogin}
         disabled={loading}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Sign in"
+        accessibilityState={{ disabled: loading }}
       >
         {loading ? (
           <ActivityIndicator color="#fff" />
@@ -277,12 +302,16 @@ export default function LoginScreen({ navigation }: any) {
         <Text
           style={[
             styles.registerText,
-            { color: theme.subText, fontSize: fontSizes.sm },
+            { color: theme.textSecondary, fontSize: fontSizes.sm },
           ]}
         >
           Don't have an account?{" "}
         </Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate("Register")}
+          accessibilityRole="link"
+          accessibilityLabel="Create a new account"
+        >
           <Text style={[styles.registerLink, { fontSize: fontSizes.sm }]}>
             Create Account
           </Text>
@@ -292,7 +321,7 @@ export default function LoginScreen({ navigation }: any) {
       <Text
         style={[
           styles.footer,
-          { color: theme.subText, fontSize: fontSizes.xs },
+          { color: theme.textTertiary, fontSize: fontSizes.xs },
         ]}
       >
         Hive • University of Ghana
@@ -303,7 +332,7 @@ export default function LoginScreen({ navigation }: any) {
   // ── MOBILE ──
   if (isMobile) {
     return (
-      <SafeAreaView style={[styles.mobileSafe, { backgroundColor: "#00467F" }]}>
+      <SafeAreaView style={[styles.mobileSafe, { backgroundColor: Palette.primary }]}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -317,7 +346,9 @@ export default function LoginScreen({ navigation }: any) {
             <View style={styles.mobileHero}>
               <View style={styles.circle1} />
               <View style={styles.circle2} />
-              <Text style={styles.mobileEmoji}>🎓</Text>
+              <View style={styles.mobileLogoBadge}>
+                <Text style={styles.mobileEmoji}>🎓</Text>
+              </View>
               <Text style={styles.mobileAppName}>Hive 🐝</Text>
               <Text style={styles.mobileTagline}>
                 Connect. Collaborate. Belong.
@@ -334,30 +365,38 @@ export default function LoginScreen({ navigation }: any) {
 
   // ── WEB ──
   return (
-    <View style={[styles.webRoot, { backgroundColor: "#F5F7FF" }]}>
+    <View style={[styles.webRoot, { backgroundColor: Palette.gray50 }]}>
       {/* Left Panel */}
       <View style={styles.webLeft}>
         <View style={styles.circle1} />
         <View style={styles.circle2} />
-        <Text style={styles.webEmoji}>🎓</Text>
-        <Text style={styles.webAppName}>Hive 🐝</Text>
-        <Text style={styles.webTagline}>Connect. Collaborate. Belong.</Text>
-        {[
-          { icon: "people-outline", text: "Discover student groups" },
-          { icon: "search-outline", text: "Search by interest or category" },
-          { icon: "chatbubble-outline", text: "Connect with your community" },
-          { icon: "star-outline", text: "Join and manage groups easily" },
-        ].map((f, i) => (
-          <View key={i} style={styles.webFeatureItem}>
-            <Ionicons
-              name={f.icon as any}
-              size={18}
-              color="rgba(255,255,255,0.9)"
-            />
-            <Text style={styles.webFeatureText}>{f.text}</Text>
+        <View style={styles.circle3} />
+
+        <View style={styles.webLeftContent}>
+          <View style={styles.webLogoBadge}>
+            <Text style={styles.webEmoji}>🎓</Text>
           </View>
-        ))}
-        <Text style={styles.webLeftFooter}>Hive • University of Ghana</Text>
+          <Text style={styles.webAppName}>Hive 🐝</Text>
+          <Text style={styles.webTagline}>Connect. Collaborate. Belong.</Text>
+          {[
+            { icon: "people-outline", text: "Discover student groups" },
+            { icon: "search-outline", text: "Search by interest or category" },
+            { icon: "chatbubble-outline", text: "Connect with your community" },
+            { icon: "star-outline", text: "Join and manage groups easily" },
+          ].map((f, i) => (
+            <View key={i} style={styles.webFeatureItem}>
+              <View style={styles.webFeatureIconBg}>
+                <Ionicons
+                  name={f.icon as any}
+                  size={16}
+                  color="rgba(255,255,255,0.9)"
+                />
+              </View>
+              <Text style={styles.webFeatureText}>{f.text}</Text>
+            </View>
+          ))}
+          <Text style={styles.webLeftFooter}>Hive • University of Ghana</Text>
+        </View>
       </View>
 
       {/* Right Panel */}
@@ -379,18 +418,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 48,
     paddingBottom: 32,
-    paddingHorizontal: 24,
+    paddingHorizontal: Spacing.xl,
     position: "relative",
     overflow: "hidden",
   },
   mobileFormWrap: { flex: 1 },
-  mobileEmoji: { fontSize: 60, marginBottom: 12, zIndex: 1 },
+  mobileLogoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+    zIndex: 1,
+  },
+  mobileEmoji: { fontSize: 40, zIndex: 1 },
   mobileAppName: {
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "800",
     color: "#fff",
     marginBottom: 6,
     zIndex: 1,
+    letterSpacing: 0.5,
   },
   mobileTagline: {
     fontSize: 14,
@@ -401,19 +451,33 @@ const styles = StyleSheet.create({
   // ── WEB ──
   webRoot: { flexDirection: "row", flex: 1 },
   webLeft: {
-    width: 420,
-    backgroundColor: "#00467F",
-    padding: 48,
+    width: 440,
+    backgroundColor: Palette.primary,
     justifyContent: "center",
     position: "relative",
     overflow: "hidden",
   },
-  webEmoji: { fontSize: 56, marginBottom: 12 },
+  webLeftContent: {
+    paddingHorizontal: 48,
+    paddingVertical: 48,
+    zIndex: 1,
+  },
+  webLogoBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  webEmoji: { fontSize: 36 },
   webAppName: {
     fontSize: 32,
-    fontWeight: "bold",
+    fontWeight: "800",
     color: "#fff",
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
+    letterSpacing: 0.5,
   },
   webTagline: {
     fontSize: 15,
@@ -426,6 +490,14 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
+  webFeatureIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   webFeatureText: { color: "rgba(255,255,255,0.85)", fontSize: 14 },
   webLeftFooter: {
     color: "rgba(255,255,255,0.4)",
@@ -437,7 +509,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     padding: 48,
-    maxWidth: 480,
+    maxWidth: 500,
     alignSelf: "center",
     width: "100%",
   },
@@ -445,11 +517,11 @@ const styles = StyleSheet.create({
   // ── CIRCLES (shared) ──
   circle1: {
     position: "absolute",
-    width: 300,
-    height: 300,
-    borderRadius: 150,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
     backgroundColor: "rgba(255,255,255,0.06)",
-    top: -100,
+    top: -120,
     right: -80,
   },
   circle2: {
@@ -461,72 +533,93 @@ const styles = StyleSheet.create({
     bottom: -60,
     left: -60,
   },
+  circle3: {
+    position: "absolute",
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: "rgba(255,255,255,0.03)",
+    top: "40%",
+    left: "20%",
+  },
 
   // ── FORM (shared) ──
   formBox: {
-    margin: 16,
-    borderRadius: 20,
-    padding: 24,
-    elevation: 4,
+    margin: Spacing.lg,
+    borderRadius: Radii.xl,
+    padding: Spacing.xl,
+    ...Shadows.lg,
   },
-  formTitle: { fontWeight: "bold", marginBottom: 6 },
-  formSub: { marginBottom: 24 },
+  formTitle: { fontWeight: "800", marginBottom: 6, letterSpacing: -0.3 },
+  formSub: { marginBottom: Spacing.xl },
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFF0F0",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
     borderWidth: 1,
-    borderColor: "#FFD0D0",
   },
-  errorText: { color: "#FF6B6B", fontSize: 13, flex: 1 },
-  label: { fontWeight: "600", marginBottom: 8 },
+  errorText: { fontSize: 13, flex: 1 },
+  label: { fontWeight: "600", marginBottom: Spacing.sm },
   fieldGroup: { marginBottom: 18 },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: Radii.md,
     borderWidth: 1.5,
     paddingHorizontal: 14,
     height: 52,
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
   },
   inputIcon: { marginRight: 10 },
   input: { flex: 1 },
-  forgotRow: { alignSelf: "flex-end", marginTop: -8, marginBottom: 24 },
-  forgotText: { color: "#00467F", fontWeight: "600" },
+  forgotRow: {
+    alignSelf: "flex-end",
+    marginTop: -8,
+    marginBottom: Spacing.xl,
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  forgotText: { color: Palette.primary, fontWeight: "600" },
   loginBtn: {
-    backgroundColor: "#00467F",
-    borderRadius: 12,
+    backgroundColor: Palette.primary,
+    borderRadius: Radii.md,
     height: 52,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
+    ...Shadows.primaryGlow,
   },
-  loginBtnText: { color: "#fff", fontWeight: "bold" },
+  loginBtnText: { color: "#fff", fontWeight: "700" },
   registerRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
   },
   registerText: {},
-  registerLink: { color: "#00467F", fontWeight: "bold" },
+  registerLink: { color: Palette.primary, fontWeight: "700" },
   footer: { textAlign: "center" },
-  roleRow: { flexDirection: "row", gap: 12 },
+  roleRow: {
+    flexDirection: "row",
+    gap: 0,
+    borderRadius: Radii.md,
+    borderWidth: 1.5,
+    padding: 4,
+    overflow: "hidden",
+  },
   roleBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingVertical: 14,
+    gap: 6,
+    borderRadius: Radii.sm,
+    paddingVertical: 12,
+    minHeight: 44,
   },
-  roleBtnActive: { backgroundColor: "#00467F", borderColor: "#00467F" },
-  roleBtnAdminActive: { backgroundColor: "#845EF7", borderColor: "#845EF7" },
+  roleBtnActive: { backgroundColor: Palette.primary },
+  roleBtnAdminActive: { backgroundColor: Palette.accent },
   roleBtnText: { fontSize: 14, fontWeight: "600" },
 });

@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import api from "../../components/api";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../components/ThemeContext";
 import { useUser } from "../../components/UserContext";
 import { useResponsive } from "../../components/useResponsive";
@@ -446,7 +447,10 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
         >
           {/* Hero Banner */}
           <View style={[styles.hero, { backgroundColor: getColor() }]}>
-            <View style={styles.heroOverlay} />
+            <LinearGradient
+              colors={["rgba(0,0,0,0.05)", "rgba(0,0,0,0.6)"]}
+              style={styles.heroOverlay}
+            />
 
             {/* Chat Button — top right */}
             {(isMember || isCreator) && (
@@ -516,15 +520,15 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
                   disabled={joining}
                 >
                   {joining ? (
-                    <ActivityIndicator size="small" color="#00467F" />
+                    <ActivityIndicator size="small" color={theme.primary} />
                   ) : (
                     <>
                       <Ionicons
                         name="add-circle-outline"
                         size={18}
-                        color="#00467F"
+                        color={theme.primary}
                       />
-                      <Text style={styles.joinBtnText}>Join Group</Text>
+                      <Text style={[styles.joinBtnText, { color: theme.primary }]}>Join Group</Text>
                     </>
                   )}
                 </TouchableOpacity>
@@ -688,7 +692,11 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
                 key={tab.id}
                 style={[
                   styles.tabChip,
-                  activeTab === tab.id && styles.tabChipActive,
+                  { borderColor: theme.border, backgroundColor: theme.card },
+                  activeTab === tab.id && [
+                    styles.tabChipActive,
+                    { backgroundColor: theme.primary, borderColor: theme.primary },
+                  ],
                 ]}
                 onPress={() => setActiveTab(tab.id)}
               >

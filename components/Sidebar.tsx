@@ -1,17 +1,19 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
-    Image,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useNotifications } from "./NotificationContext";
 import { useTheme } from "./ThemeContext";
 import { useUser } from "./UserContext";
+import { Palette, Shadows, Spacing, Radii, Layout } from "../constants/theme";
+import FloatingBee from "./ui/FloatingBee";
 
 const NAV = [
   { icon: "home-outline", activeIcon: "home", label: "Home", screen: "Home" },
@@ -65,16 +67,20 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
         { backgroundColor: theme.sidebarBg, borderRightColor: theme.border },
       ]}
     >
+      {/* Logo */}
       <View style={styles.logo}>
-        <Text style={styles.logoEmoji}>🎓</Text>
+        <View style={styles.logoBadge}>
+          <Text style={styles.logoEmoji}>🎓</Text>
+        </View>
         <Text
           style={[
             styles.logoText,
-            { color: "#00467F", fontSize: fontSizes.md },
+            { color: theme.primary, fontSize: fontSizes.md },
           ]}
         >
           Hive
         </Text>
+        <FloatingBee size={18} />
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -87,15 +93,18 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
                 key={i}
                 style={[
                   styles.navItem,
-                  active && { backgroundColor: theme.inputBg },
+                  active && { backgroundColor: theme.primaryLight },
                 ]}
                 onPress={() => navigation.navigate(item.screen)}
+                accessibilityRole="button"
+                accessibilityLabel={`Navigate to ${item.label}`}
+                accessibilityState={{ selected: active }}
               >
                 <View style={styles.iconWrap}>
                   <Ionicons
                     name={(active ? item.activeIcon : item.icon) as any}
                     size={20}
-                    color={active ? "#00467F" : theme.subText}
+                    color={active ? theme.primary : theme.textSecondary}
                   />
                   {item.label === "Notifications" && unreadCount > 0 && (
                     <View style={styles.badge}>
@@ -109,7 +118,7 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
                   style={[
                     styles.navLabel,
                     {
-                      color: active ? "#00467F" : theme.subText,
+                      color: active ? theme.primary : theme.textSecondary,
                       fontSize: fontSizes.sm,
                     },
                     active && styles.navLabelActive,
@@ -125,6 +134,8 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
         <TouchableOpacity
           style={styles.createBtn}
           onPress={() => navigation.navigate("CreateGroup")}
+          accessibilityRole="button"
+          accessibilityLabel="Create a new group"
         >
           <Ionicons name="add" size={20} color="#fff" />
           <Text style={[styles.createBtnText, { fontSize: fontSizes.sm }]}>
@@ -133,10 +144,13 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
         </TouchableOpacity>
       </ScrollView>
 
-      <View style={[styles.footer, { borderTopColor: theme.border }]}>
+      {/* Footer */}
+      <View style={[styles.footer, { borderTopColor: theme.borderLight }]}>
         <TouchableOpacity
           style={styles.profileRow}
           onPress={() => navigation.navigate("Profile")}
+          accessibilityRole="button"
+          accessibilityLabel="View your profile"
         >
           {user?.profile_picture ? (
             <Image
@@ -147,7 +161,7 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
             <View
               style={[
                 styles.avatarFallback,
-                { backgroundColor: user?.profile_color || "#00467F" },
+                { backgroundColor: user?.profile_color || Palette.primary },
               ]}
             >
               <Text style={styles.avatarText}>{getInitials()}</Text>
@@ -165,26 +179,29 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
             <Text
               style={[
                 styles.profileSub,
-                { color: theme.subText, fontSize: fontSizes.xs },
+                { color: theme.textSecondary, fontSize: fontSizes.xs },
               ]}
             >
               {user?.department || "UG Student"}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={16} color={theme.subText} />
+          <Ionicons name="chevron-forward" size={16} color={theme.textTertiary} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.logoutBtn}
+          style={[styles.logoutBtn, { backgroundColor: theme.errorLight, borderColor: theme.error }]}
           onPress={() => setShowLogout(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Log out of your account"
         >
-          <Ionicons name="log-out-outline" size={20} color="#FF6B6B" />
-          <Text style={[styles.logoutText, { fontSize: fontSizes.sm }]}>
+          <Ionicons name="log-out-outline" size={20} color={theme.error} />
+          <Text style={[styles.logoutText, { color: theme.error, fontSize: fontSizes.sm }]}>
             Log Out
           </Text>
         </TouchableOpacity>
       </View>
 
+      {/* Logout Confirmation Modal */}
       <Modal
         visible={showLogout}
         transparent
@@ -193,13 +210,13 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalBox, { backgroundColor: theme.card }]}>
-            <View style={styles.modalIcon}>
-              <Ionicons name="log-out-outline" size={30} color="#FF6B6B" />
+            <View style={[styles.modalIcon, { backgroundColor: theme.errorLight }]}>
+              <Ionicons name="log-out-outline" size={30} color={theme.error} />
             </View>
             <Text style={[styles.modalTitle, { color: theme.text }]}>
               Log Out
             </Text>
-            <Text style={[styles.modalMsg, { color: theme.subText }]}>
+            <Text style={[styles.modalMsg, { color: theme.textSecondary }]}>
               Are you sure you want to log out?
             </Text>
             <View style={styles.modalBtns}>
@@ -209,17 +226,25 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
                   { borderColor: theme.border, backgroundColor: theme.inputBg },
                 ]}
                 onPress={() => setShowLogout(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel logout"
               >
                 <Text
-                  style={[
-                    { fontSize: 14, fontWeight: "600" },
-                    { color: theme.subText },
-                  ]}
+                  style={{
+                    fontSize: 14,
+                    fontWeight: "600",
+                    color: theme.textSecondary,
+                  }}
                 >
                   Cancel
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalConfirm} onPress={logout}>
+              <TouchableOpacity
+                style={[styles.modalConfirm, { backgroundColor: theme.error }]}
+                onPress={logout}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm logout"
+              >
                 <Text style={styles.modalConfirmText}>Log Out</Text>
               </TouchableOpacity>
             </View>
@@ -232,58 +257,70 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
 
 const styles = StyleSheet.create({
   root: {
-    width: 240,
+    width: Layout.sidebarWidth,
     borderRightWidth: 1,
-    paddingTop: 24,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingTop: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.lg,
     flex: 1,
   },
   logo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 20,
-    paddingHorizontal: 8,
+    gap: 10,
+    marginBottom: Spacing.xl,
+    paddingHorizontal: Spacing.sm,
   },
-  logoEmoji: { fontSize: 24 },
-  logoText: { fontWeight: "bold" },
+  logoBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: Palette.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoEmoji: { fontSize: 20 },
+  logoText: { fontWeight: "800", letterSpacing: 0.3 },
   scroll: { flex: 1 },
-  nav: { gap: 4, marginBottom: 16 },
+  nav: { gap: 4, marginBottom: Spacing.lg },
   navItem: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: Radii.md,
+    minHeight: 44,
   },
   iconWrap: { position: "relative" },
   badge: {
     position: "absolute",
-    top: -4,
-    right: -6,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#FF6B6B",
+    top: -5,
+    right: -7,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: Palette.error,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 3,
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: "#fff",
   },
-  badgeText: { color: "#fff", fontSize: 9, fontWeight: "bold" },
+  badgeText: { color: "#fff", fontSize: 9, fontWeight: "700" },
   navLabel: { fontWeight: "500" },
   navLabelActive: { fontWeight: "700" },
   createBtn: {
-    backgroundColor: "#00467F",
-    borderRadius: 12,
-    height: 46,
+    backgroundColor: Palette.primary,
+    borderRadius: Radii.md,
+    height: 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
+    ...Shadows.primaryGlow,
   },
-  createBtnText: { color: "#fff", fontWeight: "600" },
+  createBtnText: { color: "#fff", fontWeight: "700" },
   adminSection: { borderTopWidth: 1, paddingTop: 12, gap: 8, marginBottom: 16 },
   adminLabel: {
     fontSize: 10,
@@ -296,26 +333,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     padding: 10,
-    borderRadius: 12,
+    borderRadius: Radii.md,
     borderWidth: 1.5,
   },
   adminIcon: {
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: "#00467F",
+    backgroundColor: Palette.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  adminTitle: { fontWeight: "700", color: "#00467F" },
+  adminTitle: { fontWeight: "700", color: Palette.primary },
   adminSub: {},
-  footer: { borderTopWidth: 1, paddingTop: 12, gap: 8 },
+  footer: { borderTopWidth: 1, paddingTop: Spacing.md, gap: 8 },
   profileRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     padding: 8,
-    borderRadius: 10,
+    borderRadius: Radii.md,
+    minHeight: 44,
   },
   avatar: { width: 38, height: 38, borderRadius: 19 },
   avatarFallback: {
@@ -325,7 +363,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: "#fff", fontWeight: "bold", fontSize: 13 },
+  avatarText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   profileName: { fontWeight: "600" },
   profileSub: {},
   logoutBtn: {
@@ -333,51 +371,54 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     padding: 12,
-    borderRadius: 10,
-    backgroundColor: "#FFF0F0",
+    borderRadius: Radii.md,
     borderWidth: 1,
-    borderColor: "#FFD0D0",
+    minHeight: 44,
   },
-  logoutText: { color: "#FF6B6B", fontWeight: "600" },
+  logoutText: { fontWeight: "600" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
   },
-  modalBox: { borderRadius: 20, padding: 28, width: 300, alignItems: "center" },
+  modalBox: {
+    borderRadius: Radii.xl,
+    padding: 28,
+    width: 300,
+    alignItems: "center",
+    ...Shadows.lg,
+  },
   modalIcon: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: "#FFF0F0",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
   },
-  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 8 },
+  modalTitle: { fontSize: 20, fontWeight: "800", marginBottom: 8 },
   modalMsg: {
     fontSize: 14,
     textAlign: "center",
     lineHeight: 22,
-    marginBottom: 24,
+    marginBottom: Spacing.xl,
   },
   modalBtns: { flexDirection: "row", gap: 12, width: "100%" },
   modalCancel: {
     flex: 1,
-    height: 46,
-    borderRadius: 12,
+    height: 48,
+    borderRadius: Radii.md,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
   },
   modalConfirm: {
     flex: 1,
-    height: 46,
-    borderRadius: 12,
+    height: 48,
+    borderRadius: Radii.md,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FF6B6B",
   },
-  modalConfirmText: { color: "#fff", fontSize: 14, fontWeight: "bold" },
+  modalConfirmText: { color: "#fff", fontSize: 14, fontWeight: "700" },
 });

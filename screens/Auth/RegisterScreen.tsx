@@ -16,6 +16,7 @@ import api, { setToken } from "../../components/api";
 import { useTheme } from "../../components/ThemeContext";
 import { useUser } from "../../components/UserContext";
 import { useResponsive } from "../../components/useResponsive";
+import { Palette, Shadows, Spacing, Radii } from "../../constants/theme";
 
 export default function RegisterScreen({ navigation }: any) {
   const { isMobile } = useResponsive();
@@ -201,8 +202,8 @@ export default function RegisterScreen({ navigation }: any) {
           setOtp(["", "", "", "", "", ""]);
         }}
       >
-        <Ionicons name="arrow-back" size={16} color="#00467F" />
-        <Text style={styles.backToFormText}>Back</Text>
+        <Ionicons name="arrow-back" size={16} color={theme.primary} />
+        <Text style={[styles.backToFormText, { color: theme.primary }]}>Back</Text>
       </TouchableOpacity>
 
       <View style={styles.otpIconBox}>
@@ -224,20 +225,20 @@ export default function RegisterScreen({ navigation }: any) {
         ]}
       >
         We sent a 6-digit code to{"\n"}
-        <Text style={{ color: "#00467F", fontWeight: "700" }}>{email}</Text>
+        <Text style={{ color: theme.primary, fontWeight: "700" }}>{email}</Text>
       </Text>
 
       {!!error && (
-        <View style={styles.errorBox}>
-          <Ionicons name="alert-circle-outline" size={16} color="#FF6B6B" />
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={[styles.errorBox, { backgroundColor: theme.errorLight, borderColor: theme.error }]}>
+          <Ionicons name="alert-circle-outline" size={16} color={theme.error} />
+          <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
         </View>
       )}
 
       {!!success && (
-        <View style={styles.successBox}>
-          <Ionicons name="checkmark-circle-outline" size={16} color="#51CF66" />
-          <Text style={styles.successText}>{success}</Text>
+        <View style={[styles.successBox, { backgroundColor: theme.successLight, borderColor: theme.success }]}>
+          <Ionicons name="checkmark-circle-outline" size={16} color={theme.success} />
+          <Text style={[styles.successText, { color: theme.success }]}>{success}</Text>
         </View>
       )}
 
@@ -253,7 +254,7 @@ export default function RegisterScreen({ navigation }: any) {
               styles.otpBox,
               {
                 backgroundColor: theme.inputBg,
-                borderColor: digit ? "#00467F" : theme.border,
+                borderColor: digit ? theme.primary : theme.border,
                 color: theme.text,
               },
             ]}
@@ -327,9 +328,9 @@ export default function RegisterScreen({ navigation }: any) {
       </Text>
 
       {!!error && (
-        <View style={styles.errorBox}>
-          <Ionicons name="alert-circle-outline" size={16} color="#FF6B6B" />
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={[styles.errorBox, { backgroundColor: theme.errorLight, borderColor: theme.error }]}>
+          <Ionicons name="alert-circle-outline" size={16} color={theme.error} />
+          <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
         </View>
       )}
 
@@ -371,7 +372,7 @@ export default function RegisterScreen({ navigation }: any) {
           styles.inputRow,
           { backgroundColor: theme.inputBg, borderColor: theme.border },
           email.length > 0 && {
-            borderColor: validateEmail(email) ? "#51CF66" : "#FF6B6B",
+            borderColor: validateEmail(email) ? theme.success : theme.error,
           },
         ]}
       >
@@ -394,7 +395,7 @@ export default function RegisterScreen({ navigation }: any) {
           <Ionicons
             name={validateEmail(email) ? "checkmark-circle" : "close-circle"}
             size={18}
-            color={validateEmail(email) ? "#51CF66" : "#FF6B6B"}
+            color={validateEmail(email) ? theme.success : theme.error}
           />
         )}
       </View>
@@ -416,8 +417,8 @@ export default function RegisterScreen({ navigation }: any) {
               { backgroundColor: theme.inputBg, borderColor: theme.border },
               studentId.length > 0 && {
                 borderColor: validateStudentId(studentId)
-                  ? "#51CF66"
-                  : "#FF6B6B",
+                  ? theme.success
+                  : theme.error,
               },
             ]}
           >
@@ -572,7 +573,7 @@ export default function RegisterScreen({ navigation }: any) {
           styles.inputRow,
           { backgroundColor: theme.inputBg, borderColor: theme.border },
           confirmPassword.length > 0 && {
-            borderColor: confirmPassword === password ? "#51CF66" : "#FF6B6B",
+            borderColor: confirmPassword === password ? theme.success : theme.error,
           },
         ]}
       >
@@ -669,7 +670,7 @@ export default function RegisterScreen({ navigation }: any) {
   // ── MOBILE ──
   if (isMobile) {
     return (
-      <SafeAreaView style={[styles.mobileSafe, { backgroundColor: "#00467F" }]}>
+      <SafeAreaView style={[styles.mobileSafe, { backgroundColor: Palette.primary }]}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -716,7 +717,7 @@ export default function RegisterScreen({ navigation }: any) {
 
   // ── WEB ──
   return (
-    <View style={[styles.webRoot, { backgroundColor: "#F5F7FF" }]}>
+    <View style={[styles.webRoot, { backgroundColor: Palette.gray50 }]}>
       <View style={styles.webLeft}>
         <View style={styles.circle1} />
         <View style={styles.circle2} />
@@ -744,7 +745,7 @@ export default function RegisterScreen({ navigation }: any) {
             <View
               style={[
                 styles.stepBadge,
-                i < (step === "otp" ? 1 : 0) && { backgroundColor: "#51CF66" },
+                i < (step === "otp" ? 1 : 0) && { backgroundColor: Palette.success },
               ]}
             >
               <Text style={styles.stepNum}>{s.step}</Text>
@@ -773,7 +774,7 @@ const styles = StyleSheet.create({
   mobileHero: {
     paddingTop: 56,
     paddingBottom: 32,
-    paddingHorizontal: 24,
+    paddingHorizontal: Spacing.xl,
     alignItems: "center",
     position: "relative",
     overflow: "hidden",
@@ -782,10 +783,11 @@ const styles = StyleSheet.create({
   mobileEmoji: { fontSize: 52, marginBottom: 10, zIndex: 1 },
   mobileAppName: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: "800",
     color: "#fff",
     marginBottom: 6,
     zIndex: 1,
+    letterSpacing: 0.3,
   },
   mobileTagline: {
     fontSize: 14,
@@ -795,11 +797,11 @@ const styles = StyleSheet.create({
   },
   circle1: {
     position: "absolute",
-    width: 300,
-    height: 300,
-    borderRadius: 150,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
     backgroundColor: "rgba(255,255,255,0.06)",
-    top: -100,
+    top: -120,
     right: -80,
   },
   circle2: {
@@ -818,16 +820,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: Radii.full,
     alignSelf: "flex-start",
-    marginBottom: 24,
+    marginBottom: Spacing.xl,
+    minHeight: 44,
   },
-  backBtnText: { color: "#fff", fontSize: 13, fontWeight: "500" },
+  backBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
 
   webRoot: { flexDirection: "row", flex: 1 },
   webLeft: {
-    width: 400,
-    backgroundColor: "#00467F",
+    width: 420,
+    backgroundColor: Palette.primary,
     padding: 48,
     justifyContent: "center",
     position: "relative",
@@ -836,9 +839,10 @@ const styles = StyleSheet.create({
   webEmoji: { fontSize: 48, marginBottom: 10 },
   webAppName: {
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "800",
     color: "#fff",
     marginBottom: 6,
+    letterSpacing: 0.3,
   },
   webTagline: {
     fontSize: 14,
@@ -849,7 +853,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     padding: 48,
-    maxWidth: 520,
+    maxWidth: 540,
     alignSelf: "center",
     width: "100%",
   },
@@ -860,25 +864,30 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   stepBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
-  stepNum: { color: "#fff", fontSize: 12, fontWeight: "bold" },
+  stepNum: { color: "#fff", fontSize: 12, fontWeight: "700" },
   stepTitle: {
     color: "#fff",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
     marginBottom: 2,
   },
   stepDesc: { color: "rgba(255,255,255,0.6)", fontSize: 12 },
 
   // Form
-  formBox: { margin: 16, borderRadius: 20, padding: 24, elevation: 4 },
-  formTitle: { fontWeight: "bold", marginBottom: 6 },
+  formBox: {
+    margin: Spacing.lg,
+    borderRadius: Radii.xl,
+    padding: Spacing.xl,
+    ...Shadows.lg,
+  },
+  formTitle: { fontWeight: "800", marginBottom: 6, letterSpacing: -0.3 },
   formSub: { marginBottom: 20, lineHeight: 22 },
 
   // OTP
@@ -888,67 +897,64 @@ const styles = StyleSheet.create({
     gap: 6,
     alignSelf: "flex-start",
     marginBottom: 20,
+    minHeight: 44,
   },
-  backToFormText: { color: "#00467F", fontWeight: "600", fontSize: 14 },
-  otpIconBox: { alignItems: "center", marginBottom: 16 },
+  backToFormText: { fontWeight: "600", fontSize: 14 },
+  otpIconBox: { alignItems: "center", marginBottom: Spacing.lg },
   otpEmoji: { fontSize: 56 },
   otpRow: {
     flexDirection: "row",
     gap: 10,
     justifyContent: "center",
-    marginVertical: 24,
+    marginVertical: Spacing.xl,
   },
   otpBox: {
     width: 48,
     height: 58,
-    borderRadius: 12,
+    borderRadius: Radii.md,
     borderWidth: 2,
     fontSize: 24,
     fontWeight: "bold",
     textAlign: "center",
   },
-  resendBtn: { alignItems: "center", paddingVertical: 12 },
+  resendBtn: { alignItems: "center", paddingVertical: Spacing.md, minHeight: 44 },
   resendBtnText: { fontWeight: "500" },
 
   errorBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FFF0F0",
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#FFD0D0",
   },
-  errorText: { color: "#FF6B6B", fontSize: 13, flex: 1 },
+  errorText: { fontSize: 13, flex: 1 },
   successBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#F0FFF4",
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: Radii.md,
+    padding: Spacing.md,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#C3F0CA",
   },
-  successText: { color: "#2E7D32", fontSize: 13, flex: 1 },
+  successText: { fontSize: 13, flex: 1 },
 
   row: { flexDirection: "row", gap: 10 },
   half: { flex: 1 },
   label: { fontWeight: "600", marginBottom: 6 },
-  fieldHint: { fontSize: 11, color: "#FF6B6B", marginTop: 4 },
+  fieldHint: { fontSize: 11, color: Palette.error, marginTop: 4 },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: Radii.md,
     borderWidth: 1.5,
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.md,
     height: 50,
     marginBottom: 14,
   },
-  inputIcon: { marginRight: 8 },
+  inputIcon: { marginRight: Spacing.sm },
   input: { flex: 1 },
 
   strengthRow: {
@@ -958,8 +964,8 @@ const styles = StyleSheet.create({
     marginTop: -8,
     marginBottom: 14,
   },
-  strengthTrack: { flex: 1, height: 4, borderRadius: 2 },
-  strengthFill: { height: 4, borderRadius: 2 },
+  strengthTrack: { flex: 1, height: 5, borderRadius: 3 },
+  strengthFill: { height: 5, borderRadius: 3 },
   strengthLabel: { fontSize: 11, fontWeight: "600", width: 55 },
 
   termsRow: {
@@ -967,38 +973,40 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 10,
     marginBottom: 20,
+    minHeight: 44,
   },
   checkbox: {
     width: 22,
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: "#00467F",
+    borderColor: Palette.primary,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 1,
   },
-  checkboxChecked: { backgroundColor: "#00467F" },
+  checkboxChecked: { backgroundColor: Palette.primary },
   termsText: { flex: 1, lineHeight: 20 },
-  termsLink: { color: "#00467F", fontWeight: "600" },
+  termsLink: { color: Palette.primary, fontWeight: "700" },
 
   submitBtn: {
-    backgroundColor: "#00467F",
-    borderRadius: 12,
+    backgroundColor: Palette.primary,
+    borderRadius: Radii.md,
     height: 52,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
     gap: 8,
-    marginBottom: 16,
+    marginBottom: Spacing.lg,
+    ...Shadows.primaryGlow,
   },
-  submitBtnText: { color: "#fff", fontWeight: "bold" },
+  submitBtnText: { color: "#fff", fontWeight: "700" },
   loginRow: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   loginText: {},
-  loginLink: { color: "#00467F", fontWeight: "bold" },
+  loginLink: { color: Palette.primary, fontWeight: "700" },
   footer: { textAlign: "center" },
 });

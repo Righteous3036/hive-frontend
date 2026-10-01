@@ -115,9 +115,10 @@ export default function CreateGroupScreen({ navigation }: any) {
   return (
     <WithDrawer
       navigation={navigation}
-      activeScreen=""
+      activeScreen="Create"
       title="Create Group"
       showBack
+      hideBottomTab
     >
       <ScrollView
         style={[styles.scroll, { backgroundColor: theme.bg }]}
