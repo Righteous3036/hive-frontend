@@ -1,20 +1,26 @@
 import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import api from "../../components/api";
 import { useTheme } from "../../components/ThemeContext";
 import { useResponsive } from "../../components/useResponsive";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const AUTH_BG_IMAGE = require("../../assets/images/welcome-bg.jpg");
 
 export default function ForgotPasswordScreen({ navigation }: any) {
   const { theme, fontSizes } = useTheme();
@@ -64,7 +70,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
-          "Email not found. Please check and try again.",
+        "Email not found. Please check and try again.",
       );
     } finally {
       setLoading(false);
@@ -155,7 +161,15 @@ export default function ForgotPasswordScreen({ navigation }: any) {
   const strength = pwStrength();
 
   const content = (
-    <View style={[styles.formBox, { backgroundColor: theme.card }]}>
+    <View
+      style={[
+        styles.formBox,
+        // Semi-transparent card background when over background image:
+        isMobile
+          ? { backgroundColor: styles.formBox.backgroundColor }
+          : { backgroundColor: theme.card },
+      ]}
+    >
       {/* Back button */}
       <TouchableOpacity
         style={styles.backRow}
@@ -212,7 +226,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
       {step === "email" && (
         <>
           <View style={styles.iconBox}>
-            <Text style={styles.stepEmoji}>🔐</Text>
+            <Ionicons name="lock-closed-outline" size={32} color="#00467F" />
           </View>
           <Text
             style={[
@@ -296,7 +310,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
       {step === "otp" && (
         <>
           <View style={styles.iconBox}>
-            <Text style={styles.stepEmoji}>📧</Text>
+            <Ionicons name="mail-outline" size={32} color="#00467F" />
           </View>
           <Text
             style={[
@@ -399,7 +413,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
       {step === "reset" && (
         <>
           <View style={styles.iconBox}>
-            <Text style={styles.stepEmoji}>🔑</Text>
+            <Ionicons name="key-outline" size={32} color="#00467F" />
           </View>
           <Text
             style={[
@@ -576,61 +590,90 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 
   if (isMobile) {
     return (
-      <SafeAreaView style={[styles.mobileSafe, { backgroundColor: "#00467F" }]}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <ScrollView
-            contentContainerStyle={styles.mobileScroll}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+      <ImageBackground
+        source={AUTH_BG_IMAGE}
+        style={styles.fullBgImage}
+        resizeMode="cover"
+      >
+        <View style={styles.bgOverlay} />
+        <SafeAreaView style={styles.mobileSafe}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
           >
-            <View style={styles.mobileHero}>
-              <View style={styles.circle1} />
-              <View style={styles.circle2} />
-              <Text style={styles.heroEmoji}>🐝</Text>
-              <Text style={styles.heroTitle}>Hive</Text>
-              <Text style={styles.heroSub}>Account Recovery</Text>
-            </View>
-            {content}
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+            <ScrollView
+              contentContainerStyle={styles.mobileScroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {navigation?.canGoBack?.() && (
+                <View style={styles.authBackRow}>
+                  <TouchableOpacity
+                    style={styles.authBackBtn}
+                    onPress={() => navigation.goBack()}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="arrow-back" size={16} color="#FFFFFF" />
+                    <Text style={styles.authBackBtnText}>Back</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={styles.mobileHero}>
+                <View style={styles.mobileLogoBadge}>
+                  <Ionicons name="school" size={40} color="#1E293B" />
+                  <View style={styles.tasselDot} />
+                </View>
+                <Text style={styles.heroTitle}>Hive</Text>
+                <Text style={styles.heroSub}>Account Recovery</Text>
+              </View>
+              {content}
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   return (
     <View style={[styles.webRoot, { backgroundColor: "#F5F7FF" }]}>
-      <View style={styles.webLeft}>
-        <View style={styles.circle1} />
-        <View style={styles.circle2} />
-        <Text style={styles.heroEmoji}>🐝</Text>
-        <Text style={styles.webTitle}>Hive</Text>
-        <Text style={styles.webSub}>Account Recovery</Text>
-        <View style={styles.stepsInfo}>
-          {[
-            { icon: "mail-outline", label: "Enter your email" },
-            { icon: "keypad-outline", label: "Enter the 6-digit code" },
-            { icon: "lock-closed-outline", label: "Set a new password" },
-          ].map((s, i) => (
-            <View key={i} style={styles.stepsInfoItem}>
-              <View
-                style={[
-                  styles.stepsInfoIcon,
-                  step === ["email", "otp", "reset"][i] && {
-                    backgroundColor: "rgba(255,255,255,0.3)",
-                  },
-                ]}
-              >
-                <Ionicons name={s.icon as any} size={18} color="#fff" />
+      <ImageBackground
+        source={AUTH_BG_IMAGE}
+        style={styles.webLeft}
+        resizeMode="cover"
+      >
+        <View style={styles.webLeftOverlay} />
+        <View style={styles.webLeftContent}>
+          <View style={styles.webLogoBadge}>
+            <Ionicons name="school" size={36} color="#1E293B" />
+            <View style={styles.tasselDot} />
+          </View>
+          <Text style={styles.webTitle}>Hive</Text>
+          <Text style={styles.webSub}>Account Recovery</Text>
+          <View style={styles.stepsInfo}>
+            {[
+              { icon: "mail-outline", label: "Enter your email" },
+              { icon: "keypad-outline", label: "Enter the 6-digit code" },
+              { icon: "lock-closed-outline", label: "Set a new password" },
+            ].map((s, i) => (
+              <View key={i} style={styles.stepsInfoItem}>
+                <View
+                  style={[
+                    styles.stepsInfoIcon,
+                    step === ["email", "otp", "reset"][i] && {
+                      backgroundColor: "rgba(255,255,255,0.3)",
+                    },
+                  ]}
+                >
+                  <Ionicons name={s.icon as any} size={18} color="#fff" />
+                </View>
+                <Text style={styles.stepsInfoText}>{s.label}</Text>
               </View>
-              <Text style={styles.stepsInfoText}>{s.label}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
-      </View>
+      </ImageBackground>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.webRightContent}
@@ -643,23 +686,90 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  fullBgImage: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+  bgOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10, 15, 29, 0.65)",
+  },
+  webLeftOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10, 15, 29, 0.7)",
+  },
+  webLeftContent: {
+    padding: 48,
+    zIndex: 1,
+  },
+  authBackRow: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  authBackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.25)",
+  },
+  authBackBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  mobileLogoBadge: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  webLogoBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+  tasselDot: {
+    position: "absolute",
+    bottom: 14,
+    left: 18,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#F59E0B",
+  },
   mobileSafe: { flex: 1 },
   mobileScroll: { flexGrow: 1 },
   mobileHero: {
-    paddingTop: 48,
-    paddingBottom: 24,
+    paddingTop: 36,
+    paddingBottom: 20,
     alignItems: "center",
     position: "relative",
-    overflow: "hidden",
   },
-  heroEmoji: { fontSize: 48, marginBottom: 8, zIndex: 1 },
-  heroTitle: { fontSize: 28, fontWeight: "bold", color: "#fff", zIndex: 1 },
-  heroSub: { fontSize: 14, color: "rgba(255,255,255,0.75)", zIndex: 1 },
+  heroEmoji: { fontSize: 48, marginBottom: 8 },
+  heroTitle: { fontSize: 28, fontWeight: "bold", color: "#fff" },
+  heroSub: { fontSize: 14, color: "rgba(255,255,255,0.78)", marginTop: 4 },
   webRoot: { flexDirection: "row", flex: 1 },
   webLeft: {
     width: 400,
-    backgroundColor: "#00467F",
-    padding: 48,
     justifyContent: "center",
     position: "relative",
     overflow: "hidden",
@@ -708,7 +818,17 @@ const styles = StyleSheet.create({
     bottom: -60,
     left: -60,
   },
-  formBox: { margin: 16, borderRadius: 20, padding: 24, elevation: 4, gap: 12 },
+  formBox: {
+    margin: 16,
+    borderRadius: 20,
+    padding: 24,
+    // Semi-transparent container color with alpha channel so the background image shows through clearly:
+    backgroundColor: "rgba(30, 41, 56, 0.75)", // RGBA color with alpha channel (e.g. rgba(30, 41, 56, 0.75) or rgba(15, 23, 42, 0.70))
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.14)",
+    elevation: 4,
+    gap: 12,
+  },
   backRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
   Switch,
@@ -14,16 +15,17 @@ import api from "../../components/api";
 import { useTheme } from "../../components/ThemeContext";
 import { useResponsive } from "../../components/useResponsive";
 import WithDrawer from "../../components/withDrawer";
+import { CATEGORY_3D_ICONS } from "../../constants/categories";
 
 const CATEGORIES = [
-  { id: "study", label: "Study", icon: "📚" },
-  { id: "sports", label: "Sports", icon: "⚽" },
-  { id: "tech", label: "Tech", icon: "💻" },
-  { id: "arts", label: "Arts", icon: "🎨" },
-  { id: "dance", label: "Dance", icon: "💃" },
-  { id: "business", label: "Business", icon: "🚀" },
-  { id: "health", label: "Health", icon: "🏥" },
-  { id: "social", label: "Social", icon: "🌍" },
+  { id: "study", label: "Study", image: CATEGORY_3D_ICONS.study },
+  { id: "sports", label: "Sports", image: CATEGORY_3D_ICONS.sports },
+  { id: "tech", label: "Tech", image: CATEGORY_3D_ICONS.tech },
+  { id: "arts", label: "Arts", image: CATEGORY_3D_ICONS.arts },
+  { id: "dance", label: "Dance", image: CATEGORY_3D_ICONS.dance },
+  { id: "business", label: "Business", image: CATEGORY_3D_ICONS.business },
+  { id: "health", label: "Health", image: CATEGORY_3D_ICONS.health },
+  { id: "social", label: "Social", image: CATEGORY_3D_ICONS.social },
 ];
 
 const COLORS = [
@@ -51,23 +53,9 @@ export default function CreateGroupScreen({ navigation }: any) {
   const [maxMembers, setMaxMembers] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [requireApproval, setRequireApproval] = useState(true);
-  const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-  const addTag = () => {
-    const trimmed = tagInput.trim().toLowerCase();
-    if (trimmed && !tags.includes(trimmed) && tags.length < 5) {
-      setTags((prev) => [...prev, trimmed]);
-      setTagInput("");
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setTags((prev) => prev.filter((t) => t !== tag));
-  };
 
   const handleCreate = async () => {
     setError("");
@@ -97,7 +85,6 @@ export default function CreateGroupScreen({ navigation }: any) {
         max_members: maxMembers ? parseInt(maxMembers) : null,
         is_private: isPrivate,
         require_approval: requireApproval,
-        tags,
       });
       if (res.data.success) {
         setSuccess(
@@ -297,7 +284,11 @@ export default function CreateGroupScreen({ navigation }: any) {
                   ]}
                   onPress={() => setCategory(cat.id)}
                 >
-                  <Text style={styles.categoryEmoji}>{cat.icon}</Text>
+                  <Image
+                  source={cat.image}
+                  style={styles.category3DIcon}
+                  resizeMode="contain"
+                />
                   <Text
                     style={[
                       styles.categoryLabel,
@@ -445,95 +436,6 @@ export default function CreateGroupScreen({ navigation }: any) {
                 </View>
               </View>
             ))}
-          </View>
-
-          {/* Tags Card */}
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-          >
-            <Text
-              style={[
-                styles.cardTitle,
-                { color: theme.text, fontSize: fontSizes.lg },
-              ]}
-            >
-              Tags
-            </Text>
-            <Text
-              style={[
-                styles.cardSub,
-                { color: theme.subText, fontSize: fontSizes.xs },
-              ]}
-            >
-              Add up to 5 tags to help people find your group
-            </Text>
-
-            <View style={styles.tagInputRow}>
-              <View
-                style={[
-                  styles.inputRow,
-                  {
-                    backgroundColor: theme.inputBg,
-                    borderColor: theme.border,
-                    flex: 1,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="pricetag-outline"
-                  size={16}
-                  color={theme.subText}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={[
-                    styles.input,
-                    { color: theme.text, fontSize: fontSizes.sm },
-                  ]}
-                  placeholder="Add a tag..."
-                  placeholderTextColor={theme.subText}
-                  value={tagInput}
-                  onChangeText={setTagInput}
-                  onSubmitEditing={addTag}
-                  returnKeyType="done"
-                />
-              </View>
-              <TouchableOpacity
-                style={[styles.addTagBtn, tags.length >= 5 && { opacity: 0.5 }]}
-                onPress={addTag}
-                disabled={tags.length >= 5}
-              >
-                <Ionicons name="add" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            {tags.length > 0 && (
-              <View style={styles.tagsRow}>
-                {tags.map((tag) => (
-                  <TouchableOpacity
-                    key={tag}
-                    style={[
-                      styles.tag,
-                      { backgroundColor: color + "20", borderColor: color },
-                    ]}
-                    onPress={() => removeTag(tag)}
-                  >
-                    <Text
-                      style={[
-                        styles.tagText,
-                        { color, fontSize: fontSizes.xs },
-                      ]}
-                    >
-                      #{tag}
-                    </Text>
-                    <Ionicons name="close" size={12} color={color} />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
           </View>
 
           {/* Privacy Card */}
@@ -710,7 +612,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
   },
-  categoryEmoji: { fontSize: 16 },
+  category3DIcon: {
+    width: 20,
+    height: 20,
+  },
   categoryLabel: { fontWeight: "500" },
 
   colorsRow: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
@@ -722,27 +627,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   colorDotSelected: { borderWidth: 3, borderColor: "#fff", elevation: 4 },
-
-  tagInputRow: { flexDirection: "row", gap: 10, alignItems: "center" },
-  addTagBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 10,
-    backgroundColor: "#00467F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  tagText: { fontWeight: "600" },
 
   switchRow: {
     flexDirection: "row",

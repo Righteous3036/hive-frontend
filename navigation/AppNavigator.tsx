@@ -1,4 +1,4 @@
-import { NavigationContainer } from "@react-navigation/native";
+import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import {
   createStackNavigator,
   CardStyleInterpolators,
@@ -20,6 +20,7 @@ import { ThemeProvider } from "../components/ThemeContext";
 import { getStoredUser, User, UserProvider } from "../components/UserContext";
 import api, { clearToken, getToken, loadToken } from "../components/api";
 import FloatingBee from "../components/ui/FloatingBee";
+import AppBackgroundWrapper from "../components/AppBackgroundWrapper";
 import { Palette, Radii, Shadows } from "../constants/theme";
 
 import AdminDashboardScreen from "../screens/Admin/AdminDashboardScreen";
@@ -303,6 +304,7 @@ export default function AppNavigator() {
                 profile_color: u.profile_color || "#00467F",
                 profile_picture: u.profile_picture || null,
                 cover_photo: u.cover_photo || null,
+                theme_background: u.theme_background || null,
                 token,
               };
               setRestoredUser(fullUser);
@@ -331,66 +333,76 @@ export default function AppNavigator() {
     return <AnimatedSplashScreen />;
   }
 
+  const transparentNavTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: "transparent",
+    },
+  };
+
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <UserProvider initialUser={restoredUser}>
+      <UserProvider initialUser={restoredUser}>
+        <ThemeProvider>
           <NotificationProvider>
-            <NavigationContainer>
-              <Stack.Navigator
-                initialRouteName={initialRoute}
-                screenOptions={{
-                  headerShown: false,
-                  animationEnabled: true,
-                  cardStyle: { flex: 1, backgroundColor: "#0B0F19" },
-                  cardShadowEnabled: false,
-                  cardOverlayEnabled: false,
-                  transitionSpec: fluidTransitionSpec,
-                  cardStyleInterpolator: forFluidFadeSlide,
-                  gestureEnabled: Platform.OS === "ios",
-                  gestureDirection: "horizontal",
-                }}
-              >
-                <Stack.Screen name="Welcome" component={WelcomeScreen} />
-                <Stack.Screen name="Login" component={LoginScreen} />
-                <Stack.Screen name="Register" component={RegisterScreen} />
-                <Stack.Screen name="AIMatching" component={AIMatchingScreen} />
-                <Stack.Screen
-                  name="ForgotPassword"
-                  component={ForgotPasswordScreen}
-                />
-                <Stack.Screen name="Home" component={HomeScreen} />
-                <Stack.Screen
-                  name="GroupDetails"
-                  component={GroupDetailsScreen}
-                />
-                <Stack.Screen
-                  name="CreateGroup"
-                  component={CreateGroupScreen}
-                  options={{
-                    cardStyleInterpolator:
-                      CardStyleInterpolators.forVerticalIOS,
-                    gestureDirection: "vertical",
+            <AppBackgroundWrapper>
+              <NavigationContainer theme={transparentNavTheme}>
+                <Stack.Navigator
+                  initialRouteName={initialRoute}
+                  screenOptions={{
+                    headerShown: false,
+                    animationEnabled: true,
+                    cardStyle: { flex: 1, backgroundColor: "transparent" },
+                    cardShadowEnabled: false,
+                    cardOverlayEnabled: false,
+                    transitionSpec: fluidTransitionSpec,
+                    cardStyleInterpolator: forFluidFadeSlide,
+                    gestureEnabled: Platform.OS === "ios",
+                    gestureDirection: "horizontal",
                   }}
-                />
-                <Stack.Screen name="GroupChat" component={GroupChatScreen} />
-                <Stack.Screen name="MyGroups" component={MyGroupsScreen} />
-                <Stack.Screen
-                  name="Notifications"
-                  component={NotificationsScreen}
-                />
-                <Stack.Screen name="Profile" component={ProfileScreen} />
-                <Stack.Screen
-                  name="AdminDashboard"
-                  component={AdminDashboardScreen}
-                />
-                <Stack.Screen name="Saved" component={SavedScreen} />
-                <Stack.Screen name="Settings" component={SettingsScreen} />
-              </Stack.Navigator>
-            </NavigationContainer>
+                >
+                  <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                  <Stack.Screen name="Login" component={LoginScreen} />
+                  <Stack.Screen name="Register" component={RegisterScreen} />
+                  <Stack.Screen name="AIMatching" component={AIMatchingScreen} />
+                  <Stack.Screen
+                    name="ForgotPassword"
+                    component={ForgotPasswordScreen}
+                  />
+                  <Stack.Screen name="Home" component={HomeScreen} />
+                  <Stack.Screen
+                    name="GroupDetails"
+                    component={GroupDetailsScreen}
+                  />
+                  <Stack.Screen
+                    name="CreateGroup"
+                    component={CreateGroupScreen}
+                    options={{
+                      cardStyleInterpolator:
+                        CardStyleInterpolators.forVerticalIOS,
+                      gestureDirection: "vertical",
+                    }}
+                  />
+                  <Stack.Screen name="GroupChat" component={GroupChatScreen} />
+                  <Stack.Screen name="MyGroups" component={MyGroupsScreen} />
+                  <Stack.Screen
+                    name="Notifications"
+                    component={NotificationsScreen}
+                  />
+                  <Stack.Screen name="Profile" component={ProfileScreen} />
+                  <Stack.Screen
+                    name="AdminDashboard"
+                    component={AdminDashboardScreen}
+                  />
+                  <Stack.Screen name="Saved" component={SavedScreen} />
+                  <Stack.Screen name="Settings" component={SettingsScreen} />
+                </Stack.Navigator>
+              </NavigationContainer>
+            </AppBackgroundWrapper>
           </NotificationProvider>
-        </UserProvider>
-      </ThemeProvider>
+        </ThemeProvider>
+      </UserProvider>
     </SafeAreaProvider>
   );
 }

@@ -388,7 +388,7 @@ export default function GroupChatScreen({ navigation, route }: any) {
             padding: 24,
           }}
         >
-          <Text style={{ fontSize: 44, marginBottom: 12 }}>💬</Text>
+          <Ionicons name="chatbubbles-outline" size={54} color={theme.subText} style={{ marginBottom: 12 }} />
           <Text
             style={{
               fontSize: fontSizes.xl,
@@ -486,7 +486,7 @@ export default function GroupChatScreen({ navigation, route }: any) {
             }
             ListEmptyComponent={
               <View style={styles.emptyBox}>
-                <Text style={styles.emptyEmoji}>👋</Text>
+                <Ionicons name="chatbubble-ellipses-outline" size={54} color={theme.subText} style={{ marginBottom: 12 }} />
                 <Text style={[styles.emptyTitle, { color: theme.text }]}>
                   No messages yet
                 </Text>

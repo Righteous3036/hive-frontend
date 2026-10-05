@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
+  ImageBackground,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -14,11 +16,15 @@ import { useTheme } from "../../components/ThemeContext";
 import { useUser } from "../../components/UserContext";
 import { useResponsive } from "../../components/useResponsive";
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const AUTH_BG_IMAGE = require("../../assets/images/welcome-bg.jpg");
+
 const QUESTIONS = [
   {
     id: 1,
     question: "What is your main area of academic interest?",
-    icon: "📚",
+    icon: "book-outline",
     options: [
       "Computer Science & Technology",
       "Business & Entrepreneurship",
@@ -31,7 +37,7 @@ const QUESTIONS = [
   {
     id: 2,
     question: "What activities do you enjoy outside of class?",
-    icon: "🎯",
+    icon: "fitness-outline",
     options: [
       "Sports & Physical Fitness",
       "Music, Dance & Performing Arts",
@@ -44,7 +50,7 @@ const QUESTIONS = [
   {
     id: 3,
     question: "When are you usually free for group activities?",
-    icon: "⏰",
+    icon: "time-outline",
     options: [
       "Weekday mornings",
       "Weekday afternoons",
@@ -56,7 +62,7 @@ const QUESTIONS = [
   {
     id: 4,
     question: "What are your goals at university?",
-    icon: "🎯",
+    icon: "trophy-outline",
     options: [
       "Build professional skills & network",
       "Explore new hobbies & interests",
@@ -69,7 +75,7 @@ const QUESTIONS = [
   {
     id: 5,
     question: "What kind of group environment do you prefer?",
-    icon: "👥",
+    icon: "people-outline",
     options: [
       "Small & focused (under 10 people)",
       "Medium & structured (10–30 people)",
@@ -156,7 +162,7 @@ export default function AIMatchingScreen({ navigation }: any) {
             reason: `This ${g.category} group is popular among students with similar interests.`,
           }));
         setMatches(fallback);
-      } catch {}
+      } catch { }
       setDone(true);
     } finally {
       setLoading(false);
@@ -187,297 +193,314 @@ export default function AIMatchingScreen({ navigation }: any) {
   };
 
   const CAT_ICONS: any = {
-    study: "📚",
-    sports: "⚽",
-    tech: "💻",
-    arts: "🎨",
-    dance: "💃",
-    business: "🚀",
-    health: "🏥",
-    social: "🌍",
+    study: "book-outline",
+    sports: "football-outline",
+    tech: "laptop-outline",
+    arts: "color-palette-outline",
+    dance: "musical-notes-outline",
+    business: "briefcase-outline",
+    health: "fitness-outline",
+    social: "globe-outline",
   };
 
   const getColor = (g: any) => g.color || CAT_COLORS[g.category] || "#4C9BE8";
-  const getIcon = (g: any) => CAT_ICONS[g.category] || "📌";
+  const getIcon = (g: any) => CAT_ICONS[g.category] || "pricetag-outline";
 
   // ── LOADING STATE ──
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
-        <View style={styles.loadingContainer}>
-          <View style={styles.aiAnimation}>
-            <Text style={styles.aiEmoji}>🤖</Text>
+      <ImageBackground
+        source={AUTH_BG_IMAGE}
+        style={styles.fullBgImage}
+        resizeMode="cover"
+      >
+        <View style={styles.bgOverlay} />
+        <SafeAreaView style={styles.safe}>
+          <View style={styles.loadingContainer}>
+            <View style={styles.aiAnimation}>
+              <Ionicons name="sparkles" size={44} color="#FFB347" />
+            </View>
+            <Text
+              style={[
+                styles.loadingTitle,
+                { color: "#FFFFFF", fontSize: fontSizes.xl },
+              ]}
+            >
+              Finding Your Groups...
+            </Text>
+            <Text
+              style={[
+                styles.loadingDesc,
+                { color: "rgba(255,255,255,0.8)", fontSize: fontSizes.sm },
+              ]}
+            >
+              Claude AI is analysing your interests and finding your perfect
+              campus groups
+            </Text>
+            <ActivityIndicator
+              size="large"
+              color="#F59E0B"
+              style={{ marginTop: 24 }}
+            />
+            <View style={styles.loadingSteps}>
+              {[
+                "Analysing your interests...",
+                "Reviewing available groups...",
+                "Calculating match scores...",
+                "Preparing recommendations...",
+              ].map((step, i) => (
+                <View key={i} style={styles.loadingStep}>
+                  <Ionicons name="checkmark-circle" size={16} color="#51CF66" />
+                  <Text
+                    style={[
+                      styles.loadingStepText,
+                      { color: "rgba(255,255,255,0.85)", fontSize: fontSizes.xs },
+                    ]}
+                  >
+                    {step}
+                  </Text>
+                </View>
+              ))}
+            </View>
           </View>
-          <Text
-            style={[
-              styles.loadingTitle,
-              { color: theme.text, fontSize: fontSizes.xl },
-            ]}
-          >
-            Finding Your Groups...
-          </Text>
-          <Text
-            style={[
-              styles.loadingDesc,
-              { color: theme.subText, fontSize: fontSizes.sm },
-            ]}
-          >
-            Claude AI is analysing your interests and finding your perfect
-            campus groups
-          </Text>
-          <ActivityIndicator
-            size="large"
-            color="#00467F"
-            style={{ marginTop: 24 }}
-          />
-          <View style={styles.loadingSteps}>
-            {[
-              "Analysing your interests...",
-              "Reviewing available groups...",
-              "Calculating match scores...",
-              "Preparing recommendations...",
-            ].map((step, i) => (
-              <View key={i} style={styles.loadingStep}>
-                <Ionicons name="checkmark-circle" size={16} color="#51CF66" />
-                <Text
-                  style={[
-                    styles.loadingStepText,
-                    { color: theme.subText, fontSize: fontSizes.xs },
-                  ]}
-                >
-                  {step}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   // ── RESULTS STATE ──
   if (done) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            styles.resultsContent,
-            { paddingHorizontal: isMobile ? 20 : 40 },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View style={styles.resultsHeader}>
-            <Text style={styles.resultsEmoji}>🎉</Text>
-            <Text
-              style={[
-                styles.resultsTitle,
-                { color: theme.text, fontSize: fontSizes.xxl },
-              ]}
-            >
-              Your Top Matches!
-            </Text>
-            <Text
-              style={[
-                styles.resultsDesc,
-                { color: theme.subText, fontSize: fontSizes.sm },
-              ]}
-            >
-              Claude AI personally matched these groups to your interests and
-              goals
-            </Text>
-          </View>
-
-          {error.length > 0 && (
-            <View style={styles.errorBox}>
-              <Ionicons name="alert-circle-outline" size={16} color="#FFB347" />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          {matches.length === 0 ? (
-            <View style={styles.noMatches}>
-              <Text style={styles.noMatchEmoji}>🔍</Text>
-              <Text style={[styles.noMatchTitle, { color: theme.text }]}>
-                No groups found yet
-              </Text>
-              <Text style={[styles.noMatchDesc, { color: theme.subText }]}>
-                No groups are available right now. You can browse and join
-                groups from the Home screen.
-              </Text>
-            </View>
-          ) : (
-            matches.map((group, i) => (
-              <View
-                key={group.id}
+      <ImageBackground
+        source={AUTH_BG_IMAGE}
+        style={styles.fullBgImage}
+        resizeMode="cover"
+      >
+        <View style={styles.bgOverlay} />
+        <SafeAreaView style={styles.safe}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[
+              styles.resultsContent,
+              { paddingHorizontal: isMobile ? 20 : 40 },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Header */}
+            <View style={styles.resultsHeader}>
+              <Ionicons name="sparkles" size={40} color="#FFB347" style={{ marginBottom: 8 }} />
+              <Text
                 style={[
-                  styles.matchCard,
-                  { backgroundColor: theme.card, borderColor: theme.border },
+                  styles.resultsTitle,
+                  { color: "#FFFFFF", fontSize: fontSizes.xxl },
                 ]}
               >
-                {/* Rank badge */}
+                Your Top Matches!
+              </Text>
+              <Text
+                style={[
+                  styles.resultsDesc,
+                  { color: "rgba(255,255,255,0.85)", fontSize: fontSizes.sm },
+                ]}
+              >
+                Claude AI personally matched these groups to your interests and
+                goals
+              </Text>
+            </View>
+
+            {error.length > 0 && (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle-outline" size={16} color="#FFB347" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {matches.length === 0 ? (
+              <View style={styles.noMatches}>
+                <Ionicons name="search-outline" size={48} color={theme.subText} style={{ marginBottom: 12 }} />
+                <Text style={[styles.noMatchTitle, { color: theme.text }]}>
+                  No groups found yet
+                </Text>
+                <Text style={[styles.noMatchDesc, { color: theme.subText }]}>
+                  No groups are available right now. You can browse and join
+                  groups from the Home screen.
+                </Text>
+              </View>
+            ) : (
+              matches.map((group, i) => (
                 <View
+                  key={group.id}
                   style={[
-                    styles.rankBadge,
-                    { backgroundColor: getColor(group) },
+                    styles.matchCard,
+                    {
+                      backgroundColor: styles.matchCard.backgroundColor,
+                      borderColor: "rgba(255, 255, 255, 0.14)",
+                    },
                   ]}
                 >
-                  <Text style={styles.rankText}>#{i + 1}</Text>
-                </View>
-
-                {/* Match % */}
-                <View style={styles.matchHeader}>
+                  {/* Rank badge */}
                   <View
                     style={[
-                      styles.matchIconBox,
-                      { backgroundColor: getColor(group) + "20" },
+                      styles.rankBadge,
+                      { backgroundColor: getColor(group) },
                     ]}
                   >
-                    <Text style={styles.matchEmoji}>{getIcon(group)}</Text>
+                    <Text style={styles.rankText}>#{i + 1}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
+
+                  {/* Match % */}
+                  <View style={styles.matchHeader}>
+                    <View
                       style={[
-                        styles.matchName,
-                        { color: theme.text, fontSize: fontSizes.md },
+                        styles.matchIconBox,
+                        { backgroundColor: getColor(group) + "20" },
                       ]}
                     >
-                      {group.name}
-                    </Text>
+                      <Text style={styles.matchEmoji}>{getIcon(group)}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.matchName,
+                          { color: theme.text, fontSize: fontSizes.md },
+                        ]}
+                      >
+                        {group.name}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.matchCategory,
+                          { color: theme.subText, fontSize: fontSizes.xs },
+                        ]}
+                      >
+                        {group.category}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.matchPctBox,
+                        { backgroundColor: getColor(group) + "20" },
+                      ]}
+                    >
+                      <Text style={[styles.matchPct, { color: getColor(group) }]}>
+                        {group.match_percentage}%
+                      </Text>
+                      <Text
+                        style={[styles.matchPctLabel, { color: getColor(group) }]}
+                      >
+                        match
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Match bar */}
+                  <View
+                    style={[
+                      styles.matchBarTrack,
+                      { backgroundColor: theme.border },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.matchBarFill,
+                        {
+                          width: `${group.match_percentage}%`,
+                          backgroundColor: getColor(group),
+                        },
+                      ]}
+                    />
+                  </View>
+
+                  {/* Reason */}
+                  <View
+                    style={[
+                      styles.reasonBox,
+                      { backgroundColor: getColor(group) + "10" },
+                    ]}
+                  >
+                    <Ionicons
+                      name="bulb-outline"
+                      size={14}
+                      color={getColor(group)}
+                    />
                     <Text
                       style={[
-                        styles.matchCategory,
+                        styles.reasonText,
                         { color: theme.subText, fontSize: fontSizes.xs },
                       ]}
                     >
-                      {group.category}
+                      {group.reason}
                     </Text>
                   </View>
-                  <View
-                    style={[
-                      styles.matchPctBox,
-                      { backgroundColor: getColor(group) + "20" },
-                    ]}
-                  >
-                    <Text style={[styles.matchPct, { color: getColor(group) }]}>
-                      {group.match_percentage}%
-                    </Text>
-                    <Text
-                      style={[styles.matchPctLabel, { color: getColor(group) }]}
-                    >
-                      match
-                    </Text>
-                  </View>
-                </View>
 
-                {/* Match bar */}
-                <View
-                  style={[
-                    styles.matchBarTrack,
-                    { backgroundColor: theme.border },
-                  ]}
-                >
-                  <View
+                  {/* Join Button */}
+                  <TouchableOpacity
                     style={[
-                      styles.matchBarFill,
-                      {
-                        width: `${group.match_percentage}%`,
-                        backgroundColor: getColor(group),
+                      styles.joinBtn,
+                      { backgroundColor: getColor(group) },
+                      joinedGroups.includes(group.id) && {
+                        backgroundColor: "#51CF66",
                       },
                     ]}
-                  />
-                </View>
-
-                {/* Reason */}
-                <View
-                  style={[
-                    styles.reasonBox,
-                    { backgroundColor: getColor(group) + "10" },
-                  ]}
-                >
-                  <Ionicons
-                    name="bulb-outline"
-                    size={14}
-                    color={getColor(group)}
-                  />
-                  <Text
-                    style={[
-                      styles.reasonText,
-                      { color: theme.subText, fontSize: fontSizes.xs },
-                    ]}
+                    onPress={() =>
+                      !joinedGroups.includes(group.id) && joinGroup(group.id)
+                    }
+                    disabled={
+                      joining === group.id || joinedGroups.includes(group.id)
+                    }
                   >
-                    {group.reason}
-                  </Text>
+                    {joining === group.id ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : joinedGroups.includes(group.id) ? (
+                      <>
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={18}
+                          color="#fff"
+                        />
+                        <Text style={styles.joinBtnText}>Joined!</Text>
+                      </>
+                    ) : (
+                      <>
+                        <Ionicons
+                          name="add-circle-outline"
+                          size={18}
+                          color="#fff"
+                        />
+                        <Text style={styles.joinBtnText}>Join Group</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 </View>
+              ))
+            )}
 
-                {/* Join Button */}
-                <TouchableOpacity
-                  style={[
-                    styles.joinBtn,
-                    { backgroundColor: getColor(group) },
-                    joinedGroups.includes(group.id) && {
-                      backgroundColor: "#51CF66",
-                    },
-                  ]}
-                  onPress={() =>
-                    !joinedGroups.includes(group.id) && joinGroup(group.id)
-                  }
-                  disabled={
-                    joining === group.id || joinedGroups.includes(group.id)
-                  }
-                >
-                  {joining === group.id ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : joinedGroups.includes(group.id) ? (
-                    <>
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={18}
-                        color="#fff"
-                      />
-                      <Text style={styles.joinBtnText}>Joined!</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Ionicons
-                        name="add-circle-outline"
-                        size={18}
-                        color="#fff"
-                      />
-                      <Text style={styles.joinBtnText}>Join Group</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
+            {/* Continue to Home */}
+            <TouchableOpacity
+              style={styles.continueBtn}
+              onPress={() => navigation.navigate("Home")}
+            >
+              <Text style={styles.continueBtnText}>
+                {joinedGroups.length > 0
+                  ? `Continue to Home (Joined ${joinedGroups.length} group${joinedGroups.length > 1 ? "s" : ""})`
+                  : "Skip & Go to Home"}
+              </Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </TouchableOpacity>
 
-          {/* Continue to Home */}
-          <TouchableOpacity
-            style={styles.continueBtn}
-            onPress={() => navigation.navigate("Home")}
-          >
-            <Text style={styles.continueBtnText}>
-              {joinedGroups.length > 0
-                ? `Continue to Home (Joined ${joinedGroups.length} group${joinedGroups.length > 1 ? "s" : ""})`
-                : "Skip & Go to Home"}
+            <Text
+              style={[
+                styles.skipNote,
+                { color: theme.subText, fontSize: fontSizes.xs },
+              ]}
+            >
+              You can always discover more groups from the Home screen
             </Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
 
-          <Text
-            style={[
-              styles.skipNote,
-              { color: theme.subText, fontSize: fontSizes.xs },
-            ]}
-          >
-            You can always discover more groups from the Home screen
-          </Text>
-
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </SafeAreaView>
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
@@ -485,181 +508,202 @@ export default function AIMatchingScreen({ navigation }: any) {
   const q = QUESTIONS[currentQuestion];
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={[
-          styles.questionContent,
-          { paddingHorizontal: isMobile ? 20 : 40 },
-        ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Header */}
-        <View style={styles.questionHeader}>
-          <Text
-            style={[
-              styles.questionWelcome,
-              { color: theme.subText, fontSize: fontSizes.sm },
-            ]}
-          >
-            👋 Welcome, {user?.name?.split(" ")[0] || "Student"}!
-          </Text>
-          <Text
-            style={[
-              styles.questionIntro,
-              { color: theme.text, fontSize: fontSizes.lg },
-            ]}
-          >
-            Let's find your perfect campus groups
-          </Text>
-        </View>
-
-        {/* Progress */}
-        <View style={styles.progressSection}>
-          <View style={styles.progressLabelRow}>
-            <Text
-              style={[
-                styles.progressLabel,
-                { color: theme.subText, fontSize: fontSizes.xs },
-              ]}
-            >
-              Question {currentQuestion + 1} of {QUESTIONS.length}
-            </Text>
-            <Text
-              style={[
-                styles.progressPct,
-                { color: "#00467F", fontSize: fontSizes.xs },
-              ]}
-            >
-              {Math.round((currentQuestion / QUESTIONS.length) * 100)}% complete
-            </Text>
-          </View>
-          <View
-            style={[styles.progressTrack, { backgroundColor: theme.border }]}
-          >
-            <View style={[styles.progressFill, { width: `${progress}%` }]} />
-          </View>
-        </View>
-
-        {/* Question Card */}
-        <View
-          style={[
-            styles.questionCard,
-            { backgroundColor: theme.card, borderColor: theme.border },
+    <ImageBackground
+      source={AUTH_BG_IMAGE}
+      style={styles.fullBgImage}
+      resizeMode="cover"
+    >
+      <View style={styles.bgOverlay} />
+      <SafeAreaView style={styles.safe}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.questionContent,
+            { paddingHorizontal: isMobile ? 20 : 40 },
           ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.questionEmoji}>{q.icon}</Text>
-          <Text
-            style={[
-              styles.questionText,
-              { color: theme.text, fontSize: fontSizes.lg },
-            ]}
-          >
-            {q.question}
-          </Text>
-
-          <View style={styles.optionsList}>
-            {q.options.map((option, i) => (
-              <TouchableOpacity
-                key={i}
-                style={[
-                  styles.optionBtn,
-                  { borderColor: theme.border, backgroundColor: theme.inputBg },
-                  selectedOption === option && styles.optionBtnSelected,
-                ]}
-                onPress={() => handleSelect(option)}
-                activeOpacity={0.8}
-              >
-                <View
-                  style={[
-                    styles.optionRadio,
-                    {
-                      borderColor:
-                        selectedOption === option ? "#00467F" : theme.border,
-                    },
-                    selectedOption === option && styles.optionRadioSelected,
-                  ]}
-                >
-                  {selectedOption === option && (
-                    <View style={styles.optionRadioDot} />
-                  )}
-                </View>
-                <Text
-                  style={[
-                    styles.optionText,
-                    {
-                      color: selectedOption === option ? "#00467F" : theme.text,
-                      fontSize: fontSizes.sm,
-                    },
-                    selectedOption === option && { fontWeight: "600" },
-                  ]}
-                >
-                  {option}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Navigation Buttons */}
-        <View style={styles.navBtns}>
-          {currentQuestion > 0 && (
-            <TouchableOpacity
-              style={[styles.backBtn, { borderColor: theme.border }]}
-              onPress={handleBack}
+          {/* Header */}
+          <View style={styles.questionHeader}>
+            <Text
+              style={[
+                styles.questionWelcome,
+                { color: "rgba(255, 255, 255, 0.85)", fontSize: fontSizes.sm },
+              ]}
             >
-              <Ionicons name="arrow-back" size={18} color={theme.subText} />
+              Welcome, {user?.name?.split(" ")[0] || "Student"}!
+            </Text>
+            <Text
+              style={[
+                styles.questionIntro,
+                { color: "#FFFFFF", fontSize: fontSizes.lg },
+              ]}
+            >
+              Let's find your perfect campus groups
+            </Text>
+          </View>
+
+          {/* Progress */}
+          <View style={styles.progressSection}>
+            <View style={styles.progressLabelRow}>
               <Text
                 style={[
-                  styles.backBtnText,
-                  { color: theme.subText, fontSize: fontSizes.sm },
+                  styles.progressLabel,
+                  { color: "rgba(255, 255, 255, 0.8)", fontSize: fontSizes.xs },
                 ]}
               >
-                Back
+                Question {currentQuestion + 1} of {QUESTIONS.length}
               </Text>
+              <Text
+                style={[
+                  styles.progressPct,
+                  { color: "#F59E0B", fontSize: fontSizes.xs },
+                ]}
+              >
+                {Math.round((currentQuestion / QUESTIONS.length) * 100)}% complete
+              </Text>
+            </View>
+            <View
+              style={[styles.progressTrack, { backgroundColor: "rgba(255, 255, 255, 0.25)" }]}
+            >
+              <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: "#F59E0B" }]} />
+            </View>
+          </View>
+
+          {/* Question Card */}
+          <View
+            style={[
+              styles.questionCard,
+              {
+                backgroundColor: styles.questionCard.backgroundColor,
+                borderColor: "rgba(255, 255, 255, 0.14)",
+              },
+            ]}
+          >
+            <View style={{ marginBottom: 12 }}>
+              <Ionicons name={q.icon as any} size={30} color="#00467F" />
+            </View>
+            <Text
+              style={[
+                styles.questionText,
+                { color: theme.text, fontSize: fontSizes.lg },
+              ]}
+            >
+              {q.question}
+            </Text>
+
+            <View style={styles.optionsList}>
+              {q.options.map((option, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    styles.optionBtn,
+                    { borderColor: theme.border, backgroundColor: theme.inputBg },
+                    selectedOption === option && styles.optionBtnSelected,
+                  ]}
+                  onPress={() => handleSelect(option)}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.optionRadio,
+                      {
+                        borderColor:
+                          selectedOption === option ? "#00467F" : theme.border,
+                      },
+                      selectedOption === option && styles.optionRadioSelected,
+                    ]}
+                  >
+                    {selectedOption === option && (
+                      <View style={styles.optionRadioDot} />
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      {
+                        color: selectedOption === option ? "#00467F" : theme.text,
+                        fontSize: fontSizes.sm,
+                      },
+                      selectedOption === option && { fontWeight: "600" },
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Navigation Buttons */}
+          <View style={styles.navBtns}>
+            {currentQuestion > 0 && (
+              <TouchableOpacity
+                style={[styles.backBtn, { borderColor: theme.border }]}
+                onPress={handleBack}
+              >
+                <Ionicons name="arrow-back" size={18} color={theme.subText} />
+                <Text
+                  style={[
+                    styles.backBtnText,
+                    { color: theme.subText, fontSize: fontSizes.sm },
+                  ]}
+                >
+                  Back
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[
+                styles.nextBtn,
+                { flex: currentQuestion === 0 ? 1 : undefined },
+                !selectedOption && { opacity: 0.5 },
+              ]}
+              onPress={handleNext}
+              disabled={!selectedOption}
+            >
+              <Text style={[styles.nextBtnText, { fontSize: fontSizes.sm }]}>
+                {currentQuestion === QUESTIONS.length - 1
+                  ? "Find My Groups"
+                  : "Next Question"}
+              </Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
             </TouchableOpacity>
-          )}
+          </View>
 
           <TouchableOpacity
-            style={[
-              styles.nextBtn,
-              { flex: currentQuestion === 0 ? 1 : undefined },
-              !selectedOption && { opacity: 0.5 },
-            ]}
-            onPress={handleNext}
-            disabled={!selectedOption}
+            style={styles.skipBtn}
+            onPress={() => navigation.navigate("Home")}
           >
-            <Text style={[styles.nextBtnText, { fontSize: fontSizes.sm }]}>
-              {currentQuestion === QUESTIONS.length - 1
-                ? "Find My Groups 🤖"
-                : "Next Question"}
+            <Text
+              style={[
+                styles.skipBtnText,
+                { color: "rgba(255, 255, 255, 0.75)", fontSize: fontSizes.xs },
+              ]}
+            >
+              Skip — I'll browse groups myself
             </Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
           </TouchableOpacity>
-        </View>
 
-        <TouchableOpacity
-          style={styles.skipBtn}
-          onPress={() => navigation.navigate("Home")}
-        >
-          <Text
-            style={[
-              styles.skipBtnText,
-              { color: theme.subText, fontSize: fontSizes.xs },
-            ]}
-          >
-            Skip — I'll browse groups myself
-          </Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  fullBgImage: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+  bgOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10, 15, 29, 0.65)",
+  },
   safe: { flex: 1 },
 
   // Loading
@@ -708,7 +752,10 @@ const styles = StyleSheet.create({
   questionCard: {
     borderRadius: 20,
     padding: 24,
+    // Semi-transparent container color with alpha channel so the background image shows through clearly:
+    backgroundColor: "rgba(30, 41, 56, 0.75)", // RGBA color with alpha channel (e.g. rgba(30, 41, 56, 0.75) or rgba(15, 23, 42, 0.70))
     borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.14)",
     gap: 16,
     elevation: 2,
     marginBottom: 20,
@@ -794,7 +841,10 @@ const styles = StyleSheet.create({
   matchCard: {
     borderRadius: 18,
     padding: 20,
+    // Semi-transparent container color with alpha channel so the background image shows through clearly:
+    backgroundColor: "rgba(30, 41, 56, 0.75)", // RGBA color with alpha channel (e.g. rgba(30, 41, 56, 0.75) or rgba(15, 23, 42, 0.70))
     borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.14)",
     gap: 14,
     marginBottom: 16,
     position: "relative",

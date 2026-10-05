@@ -70,7 +70,7 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
       {/* Logo */}
       <View style={styles.logo}>
         <View style={styles.logoBadge}>
-          <Text style={styles.logoEmoji}>🎓</Text>
+          <Ionicons name="school" size={18} color="#FFFFFF" />
         </View>
         <Text
           style={[
@@ -85,7 +85,20 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.nav}>
-          {NAV.map((item, i) => {
+          {[
+            ...NAV,
+            ...(user?.role === "admin"
+              ? [
+                  {
+                    icon: "shield-checkmark-outline",
+                    activeIcon: "shield-checkmark",
+                    label: "Admin Dashboard",
+                    screen: "AdminDashboard",
+                    isAdmin: true,
+                  },
+                ]
+              : []),
+          ].map((item: any, i) => {
             const active =
               activeScreen === item.label || activeScreen === item.screen;
             return (
@@ -94,6 +107,14 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
                 style={[
                   styles.navItem,
                   active && { backgroundColor: theme.primaryLight },
+                  item.isAdmin && {
+                    backgroundColor: active
+                      ? (theme.accent || "#F5A623") + "25"
+                      : (theme.accent || "#F5A623") + "12",
+                    borderWidth: 1,
+                    borderColor: (theme.accent || "#F5A623") + "35",
+                    marginTop: 6,
+                  },
                 ]}
                 onPress={() => navigation.navigate(item.screen)}
                 accessibilityRole="button"
@@ -104,7 +125,13 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
                   <Ionicons
                     name={(active ? item.activeIcon : item.icon) as any}
                     size={20}
-                    color={active ? theme.primary : theme.textSecondary}
+                    color={
+                      item.isAdmin
+                        ? theme.accent || "#F5A623"
+                        : active
+                        ? theme.primary
+                        : theme.textSecondary
+                    }
                   />
                   {item.label === "Notifications" && unreadCount > 0 && (
                     <View style={styles.badge}>
@@ -118,14 +145,40 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
                   style={[
                     styles.navLabel,
                     {
-                      color: active ? theme.primary : theme.textSecondary,
+                      color: item.isAdmin
+                        ? theme.accent || "#F5A623"
+                        : active
+                        ? theme.primary
+                        : theme.textSecondary,
                       fontSize: fontSizes.sm,
                     },
                     active && styles.navLabelActive,
+                    item.isAdmin && { fontWeight: "700" },
                   ]}
                 >
                   {item.label}
                 </Text>
+                {item.isAdmin && (
+                  <View
+                    style={{
+                      backgroundColor: theme.accent || "#F5A623",
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 9,
+                        fontWeight: "800",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      ADMIN
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}

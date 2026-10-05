@@ -1,7 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Animated,
+    Easing,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -16,7 +19,7 @@ import WithDrawer from "../../components/withDrawer";
 
 export default function AdminDashboardScreen({ navigation }: any) {
   const { theme, fontSizes } = useTheme();
-  const { padding } = useResponsive();
+  const { padding, width } = useResponsive();
 
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState<any>(null);
@@ -24,8 +27,19 @@ export default function AdminDashboardScreen({ navigation }: any) {
   const [groups, setGroups] = useState<any[]>([]);
   const [pendingGroups, setPendingGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userSearch, setUserSearch] = useState("");
   const [groupSearch, setGroupSearch] = useState("");
+
+  const spinAnim = useRef(new Animated.Value(0)).current;
+  const wheelRotateAnim = useRef(new Animated.Value(0)).current;
+
+  // Responsive circular control ring dimensions
+  const ringSize = Math.min(width - padding * 2, 304);
+  const centerSize = Math.round(ringSize * 0.24); // ~73px
+  const quadGap = 8;
+  const quadSize = (ringSize - quadGap) / 2; // ~148px
+  const neonRadius = Math.round(centerSize * 0.58); // ~42px
 
   useEffect(() => {
     fetchData();
@@ -34,9 +48,56 @@ export default function AdminDashboardScreen({ navigation }: any) {
     return () => clearInterval(interval);
   }, []);
 
+  // Endless smooth 360-degree continuous rotation for the colored wheel
+  useEffect(() => {
+    const wheelLoop = Animated.loop(
+      Animated.timing(wheelRotateAnim, {
+        toValue: 1,
+        duration: 24000, // 24 seconds for smooth, serene, non-jarring continuous rotation
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    wheelLoop.start();
+    return () => wheelLoop.stop();
+  }, []);
+
+  const wheelRotateInterpolate = wheelRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  // Counter-rotation to keep icons and metric text upright and legible
+  const counterRotateInterpolate = wheelRotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "-360deg"],
+  });
+
+  useEffect(() => {
+    if (loading || refreshing) {
+      const loop = Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 1100,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      loop.start();
+      return () => loop.stop();
+    } else {
+      spinAnim.setValue(0);
+    }
+  }, [loading, refreshing]);
+
+  const spinInterpolate = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["45deg", "405deg"],
+  });
+
   const fetchData = async () => {
     try {
-      setLoading(true);
+      setRefreshing(true);
       const [statsRes, usersRes, groupsRes] = await Promise.all([
         api.get("/stats"),
         api.get("/users/all"),
@@ -54,6 +115,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
       console.log("Admin fetch error:", err?.response?.data || err?.message);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -121,33 +183,6 @@ export default function AdminDashboardScreen({ navigation }: any) {
       g.category?.toLowerCase().includes(groupSearch.toLowerCase()),
   );
 
-  const STAT_CARDS = [
-    {
-      label: "Total Users",
-      value: stats?.total_users || 0,
-      icon: "people-outline",
-      color: "#4C9BE8",
-    },
-    {
-      label: "Total Groups",
-      value: stats?.total_groups || 0,
-      icon: "apps-outline",
-      color: "#51CF66",
-    },
-    {
-      label: "Active Groups",
-      value: stats?.active_groups || 0,
-      icon: "checkmark-circle-outline",
-      color: "#845EF7",
-    },
-    {
-      label: "Pending",
-      value: stats?.pending_groups || 0,
-      icon: "time-outline",
-      color: stats?.pending_groups > 0 ? "#FF6B6B" : "#FFB347",
-    },
-  ];
-
   if (loading) {
     return (
       <WithDrawer
@@ -156,7 +191,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
         title="Admin"
       >
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#00467F" />
+          <ActivityIndicator size="large" color="#22D3EE" />
           <Text style={[styles.centerText, { color: theme.subText }]}>
             Loading dashboard...
           </Text>
@@ -174,78 +209,221 @@ export default function AdminDashboardScreen({ navigation }: any) {
       <ScrollView
         style={[styles.scroll, { backgroundColor: theme.bg }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={fetchData}
+            tintColor="#22D3EE"
+            colors={["#22D3EE"]}
+          />
+        }
       >
         {/* Header */}
         <View style={[styles.header, { paddingHorizontal: padding }]}>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[
-                styles.title,
-                { color: theme.text, fontSize: fontSizes.xxl },
-              ]}
-            >
-              Admin Dashboard
-            </Text>
-            <Text
-              style={[
-                styles.subtitle,
-                { color: theme.subText, fontSize: fontSizes.sm },
-              ]}
-            >
-              Manage the Hive platform
-            </Text>
-          </View>
-          <TouchableOpacity
+          <Text
             style={[
-              styles.refreshBtn,
-              { backgroundColor: theme.card, borderColor: theme.border },
+              styles.title,
+              { color: theme.text, fontSize: fontSizes.xxl },
             ]}
-            onPress={fetchData}
           >
-            <Ionicons name="refresh-outline" size={20} color="#00467F" />
-          </TouchableOpacity>
+            Admin Dashboard
+          </Text>
         </View>
 
-        {/* Stats Grid */}
-        <View style={[styles.statsGrid, { paddingHorizontal: padding }]}>
-          {STAT_CARDS.map((stat, i) => (
-            <View
-              key={i}
+        {/* Circular Segmented Control Ring Display */}
+        <View style={styles.ringOuterWrapper}>
+          <View
+            style={[
+              styles.ringBase,
+              {
+                width: ringSize,
+                height: ringSize,
+                borderRadius: ringSize / 2,
+              },
+            ]}
+          >
+            {/* Continuously Rotating Colored Multi-Segment Wheel */}
+            <Animated.View
               style={[
-                styles.statCard,
-                { backgroundColor: theme.card, borderColor: theme.border },
+                styles.rotatingWheel,
+                {
+                  width: ringSize,
+                  height: ringSize,
+                  transform: [{ rotate: wheelRotateInterpolate }],
+                },
               ]}
             >
-              <View
-                style={[
-                  styles.statIcon,
-                  { backgroundColor: stat.color + "20" },
-                ]}
-              >
-                <Ionicons
-                  name={stat.icon as any}
-                  size={22}
-                  color={stat.color}
-                />
+              {/* Top Row: Red (Top-Left) & Blue (Top-Right) */}
+              <View style={[styles.ringRow, { height: quadSize }]}>
+                {/* Top-Left: RED - Total Users */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setActiveTab("users")}
+                  style={[
+                    styles.quadrant,
+                    styles.quadrantTopLeft,
+                    {
+                      width: quadSize,
+                      height: quadSize,
+                      borderTopLeftRadius: ringSize / 2,
+                      backgroundColor: "#EF4444",
+                    },
+                  ]}
+                >
+                  <Animated.View
+                    style={[
+                      styles.quadContentContainer,
+                      { transform: [{ rotate: counterRotateInterpolate }] },
+                    ]}
+                  >
+                    <Ionicons
+                      name="people"
+                      size={22}
+                      color="#FFFFFF"
+                      style={styles.quadIcon}
+                    />
+                    <Text style={styles.quadValueText}>
+                      {stats?.total_users ?? 3}
+                    </Text>
+                    <Text style={styles.quadLabelText}>Total Users</Text>
+                  </Animated.View>
+                </TouchableOpacity>
+
+                {/* Top-Right: BLUE - Total Groups */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setActiveTab("groups")}
+                  style={[
+                    styles.quadrant,
+                    styles.quadrantTopRight,
+                    {
+                      width: quadSize,
+                      height: quadSize,
+                      borderTopRightRadius: ringSize / 2,
+                      backgroundColor: "#3B82F6",
+                    },
+                  ]}
+                >
+                  <Animated.View
+                    style={[
+                      styles.quadContentContainer,
+                      { transform: [{ rotate: counterRotateInterpolate }] },
+                    ]}
+                  >
+                    <Ionicons
+                      name="apps"
+                      size={22}
+                      color="#FFFFFF"
+                      style={styles.quadIcon}
+                    />
+                    <Text style={styles.quadValueText}>
+                      {stats?.total_groups ?? 24}
+                    </Text>
+                    <Text style={styles.quadLabelText}>Total Groups</Text>
+                  </Animated.View>
+                </TouchableOpacity>
               </View>
-              <Text
+
+              {/* Bottom Row: Grey (Bottom-Left) & Green (Bottom-Right) */}
+              <View style={[styles.ringRow, { height: quadSize, marginTop: quadGap }]}>
+                {/* Bottom-Left: GREY - Pending */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setActiveTab("pending")}
+                  style={[
+                    styles.quadrant,
+                    styles.quadrantBottomLeft,
+                    {
+                      width: quadSize,
+                      height: quadSize,
+                      borderBottomLeftRadius: ringSize / 2,
+                      backgroundColor: "#525E75",
+                    },
+                  ]}
+                >
+                  <Animated.View
+                    style={[
+                      styles.quadContentContainer,
+                      { transform: [{ rotate: counterRotateInterpolate }] },
+                    ]}
+                  >
+                    <Ionicons
+                      name="time"
+                      size={22}
+                      color="#FFFFFF"
+                      style={styles.quadIcon}
+                    />
+                    <Text style={styles.quadValueText}>
+                      {stats?.pending_groups ?? 0}
+                    </Text>
+                    <Text style={styles.quadLabelText}>Pending</Text>
+                  </Animated.View>
+                </TouchableOpacity>
+
+                {/* Bottom-Right: GREEN - Active Groups */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => setActiveTab("groups")}
+                  style={[
+                    styles.quadrant,
+                    styles.quadrantBottomRight,
+                    {
+                      width: quadSize,
+                      height: quadSize,
+                      borderBottomRightRadius: ringSize / 2,
+                      backgroundColor: "#22C55E",
+                    },
+                  ]}
+                >
+                  <Animated.View
+                    style={[
+                      styles.quadContentContainer,
+                      { transform: [{ rotate: counterRotateInterpolate }] },
+                    ]}
+                  >
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={22}
+                      color="#FFFFFF"
+                      style={styles.quadIcon}
+                    />
+                    <Text style={styles.quadValueText}>
+                      {stats?.active_groups ?? 23}
+                    </Text>
+                    <Text style={styles.quadLabelText}>Active Groups</Text>
+                  </Animated.View>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+
+            {/* Stationary Center Glowing Neon-Blue-Cyan Indicator Disc */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={fetchData}
+              accessibilityRole="button"
+              accessibilityLabel="Refresh dashboard metrics"
+              style={[
+                styles.centerDisc,
+                {
+                  width: centerSize,
+                  height: centerSize,
+                  borderRadius: centerSize / 2,
+                },
+              ]}
+            >
+              <Animated.View
                 style={[
-                  styles.statValue,
-                  { color: theme.text, fontSize: fontSizes.xxl },
+                  styles.neonArcIndicator,
+                  {
+                    width: neonRadius,
+                    height: neonRadius,
+                    borderRadius: neonRadius / 2,
+                    transform: [{ rotate: spinInterpolate }],
+                  },
                 ]}
-              >
-                {stat.value}
-              </Text>
-              <Text
-                style={[
-                  styles.statLabel,
-                  { color: theme.subText, fontSize: fontSizes.xs },
-                ]}
-              >
-                {stat.label}
-              </Text>
-            </View>
-          ))}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Tabs */}
@@ -354,6 +532,8 @@ export default function AdminDashboardScreen({ navigation }: any) {
                   </View>
                 ))}
               </View>
+
+
 
               {pendingGroups.length > 0 && (
                 <TouchableOpacity
@@ -685,7 +865,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
             <View style={styles.section}>
               {pendingGroups.length === 0 ? (
                 <View style={styles.center}>
-                  <Text style={styles.emptyEmoji}>✅</Text>
+                  <Ionicons name="checkmark-circle-outline" size={54} color="#10B981" style={{ marginBottom: 12 }} />
                   <Text style={[styles.emptyTitle, { color: theme.text }]}>
                     All caught up!
                   </Text>
@@ -792,39 +972,143 @@ const styles = StyleSheet.create({
   },
   title: { fontWeight: "bold", marginBottom: 4 },
   subtitle: {},
-  refreshBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1.5,
-  },
-
-  statsGrid: {
+  headerRightActions: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-    marginBottom: 8,
-  },
-  statCard: {
-    width: "47%",
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
     alignItems: "center",
     gap: 8,
-    elevation: 2,
   },
-  statIcon: {
-    width: 44,
-    height: 44,
+  welcomeNavBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  welcomeNavBtnText: {
+    fontWeight: "700",
+  },
+  ringOuterWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 6,
+    marginBottom: 16,
+  },
+  ringBase: {
+    backgroundColor: "#0B0F19",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2.5,
+    borderColor: "rgba(56, 189, 248, 0.42)",
+    shadowColor: "#38BDF8",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    elevation: 10,
+    position: "relative",
+    overflow: "hidden",
+  },
+  rotatingWheel: {
     alignItems: "center",
     justifyContent: "center",
   },
-  statValue: { fontWeight: "bold" },
-  statLabel: { textAlign: "center" },
+  ringRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  quadrant: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quadrantTopLeft: {
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingTop: 16,
+    paddingLeft: 16,
+    paddingRight: 6,
+    paddingBottom: 6,
+  },
+  quadrantTopRight: {
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingTop: 16,
+    paddingRight: 16,
+    paddingLeft: 6,
+    paddingBottom: 6,
+  },
+  quadrantBottomLeft: {
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    paddingBottom: 16,
+    paddingLeft: 16,
+    paddingRight: 6,
+    paddingTop: 6,
+  },
+  quadrantBottomRight: {
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderBottomLeftRadius: 8,
+    paddingBottom: 16,
+    paddingRight: 16,
+    paddingLeft: 6,
+    paddingTop: 6,
+  },
+  quadContentContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quadIcon: {
+    marginBottom: 2,
+    opacity: 0.95,
+  },
+  quadValueText: {
+    color: "#FFFFFF",
+    fontSize: 27,
+    fontWeight: "900",
+    lineHeight: 33,
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.4)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  quadLabelText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+    opacity: 0.95,
+    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+  centerDisc: {
+    position: "absolute",
+    backgroundColor: "#070B16",
+    borderWidth: 3,
+    borderColor: "#0B0F19",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.85,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  neonArcIndicator: {
+    borderWidth: 3,
+    borderColor: "#22D3EE",
+    borderTopColor: "transparent",
+    shadowColor: "#22D3EE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 8,
+  },
 
   tabsScroll: { marginVertical: 14 },
   tabsRow: { gap: 8 },

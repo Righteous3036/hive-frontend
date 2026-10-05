@@ -2,22 +2,49 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
 import api from "../../components/api";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../../components/ThemeContext";
 import { useUser } from "../../components/UserContext";
 import { useResponsive } from "../../components/useResponsive";
 import WithDrawer from "../../components/withDrawer";
+import { emitGroupUpdated } from "../../components/groupEvents";
+import { CATEGORY_3D_ICONS, getCategory3DIcon, getCategoryVectorIcon } from "../../constants/categories";
+
+const CATEGORIES = [
+  { id: "study", label: "Study", image: CATEGORY_3D_ICONS.study },
+  { id: "sports", label: "Sports", image: CATEGORY_3D_ICONS.sports },
+  { id: "tech", label: "Tech", image: CATEGORY_3D_ICONS.tech },
+  { id: "arts", label: "Arts", image: CATEGORY_3D_ICONS.arts },
+  { id: "dance", label: "Dance", image: CATEGORY_3D_ICONS.dance },
+  { id: "business", label: "Business", image: CATEGORY_3D_ICONS.business },
+  { id: "health", label: "Health", image: CATEGORY_3D_ICONS.health },
+  { id: "social", label: "Social", image: CATEGORY_3D_ICONS.social },
+];
+
+const MEETING_FREQUENCIES = [
+  "Weekly",
+  "Bi-weekly",
+  "Weekend",
+  "Monthly",
+  "Twice a Week",
+  "Flexible",
+];
 
 const CAT_COLORS: any = {
   study: "#4C9BE8",
@@ -30,16 +57,7 @@ const CAT_COLORS: any = {
   social: "#FD7E14",
 };
 
-const CAT_ICONS: any = {
-  study: "📚",
-  sports: "⚽",
-  tech: "💻",
-  arts: "🎨",
-  dance: "💃",
-  business: "🚀",
-  health: "🏥",
-  social: "🌍",
-};
+const CAT_ICONS: any = CATEGORY_3D_ICONS;
 
 export default function GroupDetailsScreen({ navigation, route }: any) {
   const { groupId } = route?.params || {};
@@ -72,6 +90,23 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
   const pollingRef = useRef<any>(null);
   const lastMessageTimeRef = useRef<string | null>(null);
   const lastReadRef = useRef<string | null>(null);
+
+  // ── Admin Edit & Media Upload States ──
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [savingGroup, setSavingGroup] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingProfilePic, setUploadingProfilePic] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editMeetingTime, setEditMeetingTime] = useState("");
+  const [editMeetingFrequency, setEditMeetingFrequency] = useState("");
+  const [editMaxMembers, setEditMaxMembers] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editIsPrivate, setEditIsPrivate] = useState(false);
+  const [editRequireApproval, setEditRequireApproval] = useState(false);
+  const [editCoverImage, setEditCoverImage] = useState<string | null>(null);
+  const [editProfileImage, setEditProfileImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (groupId) {
@@ -127,8 +162,9 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
         ]);
 
       if (groupRes?.data?.success) {
-        setGroup(groupRes.data.group);
-        setMemberCount(parseInt(groupRes.data.group.member_count) || 0);
+        const groupData = groupRes.data.group;
+        setGroup(groupData);
+        setMemberCount(parseInt(groupData.member_count) || 0);
       }
       if (membersRes?.data?.success) setMembers(membersRes.data.members);
       if (announcementsRes?.data?.success)
@@ -136,11 +172,15 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
       if (membershipRes?.data?.success) {
         setIsMember(membershipRes.data.isMember);
         setIsPending(membershipRes.data.isPending);
+        const isAdmin =
+          membershipRes.data.role === "admin" ||
+          groupRes?.data?.group?.created_by === user?.id ||
+          user?.role === "admin";
         setIsCreator(
           membershipRes.data.role === "admin" &&
             groupRes?.data?.group?.created_by === user?.id,
         );
-        setIsGroupAdmin(membershipRes.data.role === "admin");
+        setIsGroupAdmin(Boolean(isAdmin));
       }
 
       if (membershipRes?.data?.role === "admin") {
@@ -256,6 +296,143 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
       console.log("Delete error:", err);
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // ── Open Edit Modal for Admins ──
+  const openEditModal = () => {
+    if (!group) return;
+    setEditName(group.name || "");
+    setEditDescription(group.description || "");
+    setEditLocation(group.location || "");
+    setEditMeetingTime(group.meeting_time || "");
+    setEditMeetingFrequency(group.meeting_frequency || "");
+    setEditMaxMembers(group.max_members ? String(group.max_members) : "");
+    setEditCategory(group.category || "study");
+    setEditIsPrivate(Boolean(group.is_private));
+    setEditRequireApproval(Boolean(group.require_approval));
+    setEditCoverImage(group.cover_image || null);
+    setEditProfileImage(group.profile_image || null);
+    setShowEditModal(true);
+  };
+
+  // ── Upload / Change Cover Photo from Gallery ──
+  const pickCoverImage = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Please allow photo library access to upload a cover photo.",
+        );
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.6,
+        base64: true,
+      });
+      if (!res.canceled && res.assets && res.assets[0]) {
+        const asset = res.assets[0];
+        const imgUri = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+        setUploadingCover(true);
+        setEditCoverImage(imgUri);
+        setGroup((prev: any) => ({ ...prev, cover_image: imgUri }));
+        try {
+          await api.put(`/groups/${groupId}`, { cover_image: imgUri });
+          emitGroupUpdated({ groupId: Number(groupId), cover_image: imgUri });
+        } catch (e: any) {
+          console.log("Error saving cover photo to database:", e?.response?.data || e?.message || e);
+          Alert.alert("Notice", "Cover image could not be saved to server. Please try again.");
+        } finally {
+          setUploadingCover(false);
+        }
+      }
+    } catch (err) {
+      console.log("Error picking cover photo:", err);
+      setUploadingCover(false);
+    }
+  };
+
+  // ── Upload / Change Profile Picture from Gallery ──
+  const pickProfileImage = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Please allow photo library access to upload a group profile picture.",
+        );
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.6,
+        base64: true,
+      });
+      if (!res.canceled && res.assets && res.assets[0]) {
+        const asset = res.assets[0];
+        const imgUri = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+        setUploadingProfilePic(true);
+        setEditProfileImage(imgUri);
+        setGroup((prev: any) => ({ ...prev, profile_image: imgUri }));
+        try {
+          await api.put(`/groups/${groupId}`, { profile_image: imgUri });
+          emitGroupUpdated({ groupId: Number(groupId), profile_image: imgUri });
+        } catch (e: any) {
+          console.log("Error saving profile photo to database:", e?.response?.data || e?.message || e);
+          Alert.alert("Notice", "Profile picture could not be saved to server. Please try again.");
+        } finally {
+          setUploadingProfilePic(false);
+        }
+      }
+    } catch (err) {
+      console.log("Error picking profile photo:", err);
+      setUploadingProfilePic(false);
+    }
+  };
+
+  // ── Save Edited Group Details ──
+  const handleSaveGroupDetails = async () => {
+    if (!editName.trim()) {
+      Alert.alert("Validation Error", "Group name is required.");
+      return;
+    }
+    setSavingGroup(true);
+    const payload: any = {
+      name: editName.trim(),
+      description: editDescription.trim(),
+      location: editLocation.trim() || null,
+      meeting_time: editMeetingTime.trim() || null,
+      meeting_frequency: editMeetingFrequency.trim() || null,
+      max_members: editMaxMembers ? parseInt(editMaxMembers) : null,
+      category: editCategory,
+      is_private: editIsPrivate,
+      require_approval: editRequireApproval,
+      cover_image: editCoverImage || group.cover_image || null,
+      profile_image: editProfileImage || group.profile_image || null,
+    };
+
+    try {
+      const res = await api.put(`/groups/${groupId}`, payload);
+      const updated = res.data?.group || payload;
+      setGroup((prev: any) => ({ ...prev, ...updated }));
+      emitGroupUpdated({ groupId: Number(groupId), ...updated });
+      setShowEditModal(false);
+      Alert.alert("Success", "Group details updated successfully!");
+    } catch (err: any) {
+      console.log("Save group error:", err?.response?.data || err?.message || err);
+      Alert.alert("Error", err?.response?.data?.message || "Could not save group details to server.");
+    } finally {
+      setSavingGroup(false);
     }
   };
 
@@ -380,7 +557,7 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
 
   const getColor = () =>
     group?.color || CAT_COLORS[group?.category] || "#4C9BE8";
-  const getIcon = () => CAT_ICONS[group?.category] || "📌";
+  const getIcon = () => getCategoryVectorIcon(group?.category);
   const getRoleColor = (role: string) => {
     if (role === "admin") return "#00467F";
     if (role === "moderator") return "#845EF7";
@@ -414,7 +591,7 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
         showBack
       >
         <View style={styles.center}>
-          <Text style={styles.emptyEmoji}>😕</Text>
+          <Ionicons name="alert-circle-outline" size={54} color={theme.subText} style={{ marginBottom: 12 }} />
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
             Group not found
           </Text>
@@ -447,13 +624,44 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
         >
           {/* Hero Banner */}
           <View style={[styles.hero, { backgroundColor: getColor() }]}>
+            {group.cover_image ? (
+              <View style={styles.heroCoverContainer} pointerEvents="none">
+                <Image
+                  source={{ uri: group.cover_image }}
+                  style={styles.heroCoverImage}
+                  resizeMode="cover"
+                />
+              </View>
+            ) : null}
             <LinearGradient
-              colors={["rgba(0,0,0,0.05)", "rgba(0,0,0,0.6)"]}
+              colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0.48)", "rgba(0,0,0,0.78)"]}
               style={styles.heroOverlay}
+              pointerEvents="none"
             />
 
-            {/* Chat Button — top right */}
-            {(isMember || isCreator) && (
+            {/* Change Cover Photo button for Admins */}
+            {(isGroupAdmin || isCreator) && (
+              <TouchableOpacity
+                style={styles.heroCoverEditBtn}
+                onPress={pickCoverImage}
+                disabled={uploadingCover}
+                activeOpacity={0.8}
+              >
+                {uploadingCover ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="camera" size={13} color="#fff" />
+                    <Text style={styles.heroCoverEditText}>
+                      {group.cover_image ? "Change Cover" : "Add Cover"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* Top Right Action Button (Chat) */}
+            {(isMember || isCreator || isGroupAdmin) && (
               <TouchableOpacity
                 style={styles.heroChatBtn}
                 onPress={() => {
@@ -468,7 +676,7 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
                   });
                 }}
               >
-                <Ionicons name="chatbubbles" size={22} color="#fff" />
+                <Ionicons name="chatbubbles" size={20} color="#fff" />
                 {unreadMessages > 0 && (
                   <View style={styles.chatUnreadBadge}>
                     <Text style={styles.chatUnreadText}>
@@ -479,108 +687,144 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
               </TouchableOpacity>
             )}
 
-            <View style={styles.heroTop}>
-              <Text style={styles.heroEmoji}>{getIcon()}</Text>
-              <View style={styles.heroInfo}>
-                <Text style={[styles.heroName, { fontSize: fontSizes.xl }]}>
-                  {group.name}
-                </Text>
-                <View style={styles.heroBadges}>
-                  <View style={styles.heroBadge}>
-                    <Ionicons name="people-outline" size={12} color="#fff" />
-                    <Text style={styles.heroBadgeText}>
-                      {memberCount} members
-                    </Text>
-                  </View>
-                  <View style={styles.heroBadge}>
-                    <Ionicons name="apps-outline" size={12} color="#fff" />
-                    <Text style={styles.heroBadgeText}>{group.category}</Text>
-                  </View>
-                  {group.is_private && (
-                    <View style={styles.heroBadge}>
-                      <Ionicons
-                        name="lock-closed-outline"
-                        size={12}
-                        color="#fff"
+            {/* Inner Hero Content (Padded) */}
+            <View style={styles.heroContent}>
+              <View style={styles.heroTop}>
+                {/* Profile Picture / Avatar with Admin Edit Badge */}
+                <View style={styles.heroAvatarWrapper}>
+                  {group.profile_image ? (
+                    <Image
+                      source={{ uri: group.profile_image }}
+                      style={styles.heroAvatarImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.heroEmojiCircle}>
+                      <Image
+                        source={getCategory3DIcon(group.category)}
+                        style={{ width: 36, height: 36 }}
+                        resizeMode="contain"
                       />
-                      <Text style={styles.heroBadgeText}>Private</Text>
                     </View>
                   )}
+                  {(isGroupAdmin || isCreator) && (
+                    <TouchableOpacity
+                      style={styles.heroAvatarEditBtn}
+                      onPress={pickProfileImage}
+                      disabled={uploadingProfilePic}
+                      activeOpacity={0.8}
+                      accessibilityLabel="Change Group Profile Picture"
+                    >
+                      {uploadingProfilePic ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Ionicons name="camera" size={11} color="#fff" />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <View style={styles.heroInfo}>
+                  <Text style={[styles.heroName, { fontSize: fontSizes.xl }]}>
+                    {group.name}
+                  </Text>
+                  <View style={styles.heroBadges}>
+                    <View style={styles.heroBadge}>
+                      <Ionicons name="people-outline" size={12} color="#fff" />
+                      <Text style={styles.heroBadgeText}>
+                        {memberCount} members
+                      </Text>
+                    </View>
+                    <View style={styles.heroBadge}>
+                      <Ionicons name="apps-outline" size={12} color="#fff" />
+                      <Text style={styles.heroBadgeText}>{group.category}</Text>
+                    </View>
+                    {group.is_private && (
+                      <View style={styles.heroBadge}>
+                        <Ionicons
+                          name="lock-closed-outline"
+                          size={12}
+                          color="#fff"
+                        />
+                        <Text style={styles.heroBadgeText}>Private</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {/* Action Buttons */}
-            <View style={styles.heroActions}>
-              {/* NOT A MEMBER — show Join button */}
-              {!isMember && !isPending && !isCreator && (
-                <TouchableOpacity
-                  style={styles.joinBtn}
-                  onPress={handleJoin}
-                  disabled={joining}
-                >
-                  {joining ? (
-                    <ActivityIndicator size="small" color={theme.primary} />
-                  ) : (
-                    <>
-                      <Ionicons
-                        name="add-circle-outline"
-                        size={18}
-                        color={theme.primary}
-                      />
-                      <Text style={[styles.joinBtnText, { color: theme.primary }]}>Join Group</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
+              {/* Action Buttons */}
+              <View style={styles.heroActions}>
+                {/* NOT A MEMBER — show Join button */}
+                {!isMember && !isPending && !isCreator && !isGroupAdmin && (
+                  <TouchableOpacity
+                    style={styles.joinBtn}
+                    onPress={handleJoin}
+                    disabled={joining}
+                  >
+                    {joining ? (
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    ) : (
+                      <>
+                        <Ionicons
+                          name="add-circle-outline"
+                          size={18}
+                          color={theme.primary}
+                        />
+                        <Text style={[styles.joinBtnText, { color: theme.primary }]}>Join Group</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
 
-              {/* PENDING — show Cancel Request button */}
-              {isPending && !isCreator && (
-                <TouchableOpacity
-                  style={styles.pendingBtn}
-                  onPress={cancelRequest}
-                  disabled={joining}
-                >
-                  {joining ? (
-                    <ActivityIndicator size="small" color="#F59F00" />
-                  ) : (
-                    <>
-                      <Ionicons name="time-outline" size={18} color="#F59F00" />
-                      <Text style={styles.pendingBtnText}>
-                        ⏳ Pending — Tap to Cancel
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
+                {/* PENDING — show Cancel Request button */}
+                {isPending && !isCreator && !isGroupAdmin && (
+                  <TouchableOpacity
+                    style={styles.pendingBtn}
+                    onPress={cancelRequest}
+                    disabled={joining}
+                  >
+                    {joining ? (
+                      <ActivityIndicator size="small" color="#F59F00" />
+                    ) : (
+                      <>
+                        <Ionicons name="time-outline" size={18} color="#F59F00" />
+                        <Text style={styles.pendingBtnText}>
+                          ⏳ Pending — Tap to Cancel
+                        </Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
 
-              {/* MEMBER — show Leave Group button */}
-              {isMember && !isCreator && (
-                <TouchableOpacity
-                  style={styles.leaveBtn}
-                  onPress={() => setShowLeaveModal(true)}
-                  disabled={leaving}
-                >
-                  {leaving ? (
-                    <ActivityIndicator size="small" color="#FF6B6B" />
-                  ) : (
-                    <>
-                      <Ionicons name="exit-outline" size={18} color="#FF6B6B" />
-                      <Text style={styles.leaveBtnText}>Leave Group</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
+                {/* MEMBER — show Leave Group button */}
+                {isMember && !isCreator && !isGroupAdmin && (
+                  <TouchableOpacity
+                    style={styles.leaveBtn}
+                    onPress={() => setShowLeaveModal(true)}
+                    disabled={leaving}
+                  >
+                    {leaving ? (
+                      <ActivityIndicator size="small" color="#FF6B6B" />
+                    ) : (
+                      <>
+                        <Ionicons name="exit-outline" size={18} color="#FF6B6B" />
+                        <Text style={styles.leaveBtnText}>Leave Group</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
 
-              {/* CREATOR badge */}
-              {isCreator && (
-                <View style={styles.creatorBadge}>
-                  <Ionicons name="shield-checkmark" size={14} color="#fff" />
-                  <Text style={styles.creatorBadgeText}>
-                    You are the Group Admin
-                  </Text>
-                </View>
-              )}
+                {/* CREATOR / GROUP ADMIN banner */}
+                {(isCreator || isGroupAdmin) && (
+                  <View style={styles.creatorBadge}>
+                    <Ionicons name="shield-checkmark" size={14} color="#fff" />
+                    <Text style={styles.creatorBadgeText}>
+                      You are the Group Admin
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
 
@@ -788,14 +1032,39 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
                     { backgroundColor: theme.card, borderColor: theme.border },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.cardTitle,
-                      { color: theme.text, fontSize: fontSizes.lg },
-                    ]}
-                  >
-                    Group Details
-                  </Text>
+                  <View style={styles.cardTitleRow}>
+                    <Text
+                      style={[
+                        styles.cardTitle,
+                        { color: theme.text, fontSize: fontSizes.lg },
+                      ]}
+                    >
+                      Group Details
+                    </Text>
+                    {(isGroupAdmin || isCreator) && (
+                      <TouchableOpacity
+                        style={[
+                          styles.editGroupSectionBtn,
+                          {
+                            backgroundColor: getColor() + "18",
+                            borderColor: getColor() + "45",
+                          },
+                        ]}
+                        onPress={openEditModal}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="create-outline" size={14} color={getColor()} />
+                        <Text
+                          style={[
+                            styles.editGroupSectionBtnText,
+                            { color: getColor() },
+                          ]}
+                        >
+                          Edit Group
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   {[
                     {
                       icon: "location-outline",
@@ -905,7 +1174,10 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
                       { backgroundColor: "#FFF5F5", borderColor: "#FFD0D0" },
                     ]}
                   >
-                    <Text style={styles.leaveCardTitle}>⚠️ Danger Zone</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <Ionicons name="warning-outline" size={18} color="#FF6B6B" />
+                      <Text style={styles.leaveCardTitle}>Danger Zone</Text>
+                    </View>
                     <Text style={styles.leaveCardDesc}>
                       Deleting this group will permanently remove all members,
                       announcements and data.
@@ -1056,7 +1328,7 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
               <View style={styles.section}>
                 {announcements.length === 0 ? (
                   <View style={styles.center}>
-                    <Text style={styles.emptyEmoji}>📢</Text>
+                    <Ionicons name="megaphone-outline" size={48} color={theme.subText} style={{ marginBottom: 12 }} />
                     <Text style={[styles.emptyTitle, { color: theme.text }]}>
                       No posts yet
                     </Text>
@@ -1147,7 +1419,7 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
                   </Text>
                   {joinRequests.length === 0 ? (
                     <View style={styles.miniCenter}>
-                      <Text style={{ fontSize: 32 }}>✅</Text>
+                      <Ionicons name="checkmark-circle-outline" size={36} color="#10B981" style={{ marginBottom: 6 }} />
                       <Text
                         style={[styles.centerText, { color: theme.subText }]}
                       >
@@ -1342,11 +1614,457 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
           </View>
         </View>
       </Modal>
+      {/* ── EDIT GROUP MODAL FOR ADMINS ── */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.editModalOverlay}>
+          <KeyboardAvoidingView
+            style={[
+              styles.editModalCard,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
+            {/* Header */}
+            <View style={styles.editModalHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="create-outline" size={22} color={getColor()} />
+                <Text style={[styles.editModalTitle, { color: theme.text }]}>
+                  Edit Group Details
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.editModalCloseBtn}
+                onPress={() => setShowEditModal(false)}
+                disabled={savingGroup}
+              >
+                <Ionicons name="close" size={22} color={theme.subText} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              style={styles.editModalScroll}
+              contentContainerStyle={styles.editModalScrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Media Upload Section: Cover & Profile Picture */}
+              <Text style={[styles.editSectionTitle, { color: theme.text }]}>
+                Group Images
+              </Text>
+              <View style={styles.mediaUploadRow}>
+                {/* Cover Photo Box */}
+                <TouchableOpacity
+                  style={[
+                    styles.mediaUploadBox,
+                    { backgroundColor: theme.inputBg, borderColor: theme.border },
+                  ]}
+                  onPress={pickCoverImage}
+                  disabled={uploadingCover || savingGroup}
+                >
+                  {editCoverImage || group?.cover_image ? (
+                    <Image
+                      source={{ uri: editCoverImage || group?.cover_image }}
+                      style={styles.mediaPreviewCover}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.mediaEmptyBox}>
+                      <Ionicons name="image-outline" size={26} color={getColor()} />
+                    </View>
+                  )}
+                  <View style={styles.mediaBtnLabelRow}>
+                    <Ionicons name="camera-outline" size={14} color={getColor()} />
+                    <Text style={[styles.mediaUploadBtnText, { color: getColor() }]}>
+                      {uploadingCover ? "Uploading..." : "Cover Photo"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Profile Picture Box */}
+                <TouchableOpacity
+                  style={[
+                    styles.mediaUploadBox,
+                    { backgroundColor: theme.inputBg, borderColor: theme.border },
+                  ]}
+                  onPress={pickProfileImage}
+                  disabled={uploadingProfilePic || savingGroup}
+                >
+                  {editProfileImage || group?.profile_image ? (
+                    <Image
+                      source={{ uri: editProfileImage || group?.profile_image }}
+                      style={styles.mediaPreviewProfile}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={styles.mediaEmptyBoxCircle}>
+                      <Text style={{ fontSize: 26 }}>{getIcon()}</Text>
+                    </View>
+                  )}
+                  <View style={styles.mediaBtnLabelRow}>
+                    <Ionicons name="camera-outline" size={14} color={getColor()} />
+                    <Text style={[styles.mediaUploadBtnText, { color: getColor() }]}>
+                      {uploadingProfilePic ? "Uploading..." : "Group Logo"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              {/* Form Fields */}
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.editFieldLabel, { color: theme.text }]}>
+                  Group Name *
+                </Text>
+                <TextInput
+                  style={[
+                    styles.editTextInput,
+                    {
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Enter group name"
+                  placeholderTextColor={theme.subText}
+                />
+              </View>
+
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.editFieldLabel, { color: theme.text }]}>
+                  About this Group
+                </Text>
+                <TextInput
+                  style={[
+                    styles.editTextArea,
+                    {
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  value={editDescription}
+                  onChangeText={setEditDescription}
+                  placeholder="What is this group about?"
+                  placeholderTextColor={theme.subText}
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.editFieldLabel, { color: theme.text }]}>
+                  Location
+                </Text>
+                <TextInput
+                  style={[
+                    styles.editTextInput,
+                    {
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  value={editLocation}
+                  onChangeText={setEditLocation}
+                  placeholder="e.g. JQB or Balme Library"
+                  placeholderTextColor={theme.subText}
+                />
+              </View>
+
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.editFieldLabel, { color: theme.text }]}>
+                  Meets (Time / Day)
+                </Text>
+                <TextInput
+                  style={[
+                    styles.editTextInput,
+                    {
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  value={editMeetingTime}
+                  onChangeText={setEditMeetingTime}
+                  placeholder="e.g. 6pm or Saturdays at 10:00 AM"
+                  placeholderTextColor={theme.subText}
+                />
+              </View>
+
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.editFieldLabel, { color: theme.text }]}>
+                  Meeting Frequency
+                </Text>
+                <View style={styles.freqChipsRow}>
+                  {MEETING_FREQUENCIES.map((freq) => {
+                    const isSelected =
+                      editMeetingFrequency?.trim().toLowerCase() ===
+                      freq.toLowerCase();
+                    return (
+                      <TouchableOpacity
+                        key={freq}
+                        style={[
+                          styles.freqChip,
+                          {
+                            borderColor: isSelected ? getColor() : theme.border,
+                            backgroundColor: isSelected
+                              ? getColor()
+                              : theme.inputBg,
+                          },
+                        ]}
+                        onPress={() => setEditMeetingFrequency(freq)}
+                      >
+                        <Text
+                          style={[
+                            styles.freqChipText,
+                            {
+                              color: isSelected ? "#fff" : theme.text,
+                            },
+                          ]}
+                        >
+                          {freq}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <TextInput
+                  style={[
+                    styles.editTextInput,
+                    {
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.border,
+                      color: theme.text,
+                      marginTop: 8,
+                    },
+                  ]}
+                  value={editMeetingFrequency}
+                  onChangeText={setEditMeetingFrequency}
+                  placeholder="Or type custom frequency (e.g. weekend)"
+                  placeholderTextColor={theme.subText}
+                />
+              </View>
+
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.editFieldLabel, { color: theme.text }]}>
+                  Max Members (Leave empty for no limit)
+                </Text>
+                <TextInput
+                  style={[
+                    styles.editTextInput,
+                    {
+                      backgroundColor: theme.inputBg,
+                      borderColor: theme.border,
+                      color: theme.text,
+                    },
+                  ]}
+                  value={editMaxMembers}
+                  onChangeText={setEditMaxMembers}
+                  placeholder="e.g. 5"
+                  placeholderTextColor={theme.subText}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.editFieldLabel, { color: theme.text }]}>
+                  Category
+                </Text>
+                <View style={styles.categoryGrid}>
+                  {CATEGORIES.map((cat) => (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.categoryChipItem,
+                        {
+                          borderColor: theme.border,
+                          backgroundColor:
+                            editCategory === cat.id
+                              ? getColor()
+                              : theme.inputBg,
+                        },
+                      ]}
+                      onPress={() => setEditCategory(cat.id)}
+                    >
+                      <Image
+                        source={cat.image}
+                        style={{ width: 18, height: 18 }}
+                        resizeMode="contain"
+                      />
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          {
+                            color:
+                              editCategory === cat.id ? "#fff" : theme.text,
+                          },
+                        ]}
+                      >
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Privacy Selector */}
+              <View style={styles.editFieldGroup}>
+                <Text style={[styles.editFieldLabel, { color: theme.text }]}>
+                  Privacy
+                </Text>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 4 }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.privacyPill,
+                      {
+                        borderColor: !editIsPrivate ? getColor() : theme.border,
+                        backgroundColor: !editIsPrivate
+                          ? getColor() + "20"
+                          : theme.inputBg,
+                      },
+                    ]}
+                    onPress={() => setEditIsPrivate(false)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="globe-outline"
+                      size={17}
+                      color={!editIsPrivate ? getColor() : theme.subText}
+                    />
+                    <Text
+                      style={{
+                        color: !editIsPrivate ? getColor() : theme.text,
+                        fontWeight: "600",
+                        fontSize: 13,
+                      }}
+                    >
+                      Public
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.privacyPill,
+                      {
+                        borderColor: editIsPrivate ? getColor() : theme.border,
+                        backgroundColor: editIsPrivate
+                          ? getColor() + "20"
+                          : theme.inputBg,
+                      },
+                    ]}
+                    onPress={() => setEditIsPrivate(true)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="lock-closed-outline"
+                      size={17}
+                      color={editIsPrivate ? getColor() : theme.subText}
+                    />
+                    <Text
+                      style={{
+                        color: editIsPrivate ? getColor() : theme.text,
+                        fontWeight: "600",
+                        fontSize: 13,
+                      }}
+                    >
+                      Private
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <Text
+                  style={{
+                    fontSize: 11,
+                    color: theme.subText,
+                    marginTop: 6,
+                    lineHeight: 16,
+                  }}
+                >
+                  {editIsPrivate
+                    ? "Private: Only approved members can view group posts and chat."
+                    : "Public: Anyone on campus can find and view this group."}
+                </Text>
+              </View>
+
+              {/* Require Admin Approval Switch */}
+              <View
+                style={[
+                  styles.switchRow,
+                  { borderTopColor: theme.border, borderTopWidth: 1 },
+                ]}
+              >
+                <View style={{ flex: 1, paddingRight: 10 }}>
+                  <Text style={[styles.switchLabel, { color: theme.text }]}>
+                    Require Admin Approval
+                  </Text>
+                  <Text style={[styles.switchSub, { color: theme.subText }]}>
+                    New join requests require your confirmation
+                  </Text>
+                </View>
+                <Switch
+                  value={editRequireApproval}
+                  onValueChange={setEditRequireApproval}
+                  trackColor={{ false: theme.border, true: getColor() }}
+                />
+              </View>
+            </ScrollView>
+
+            {/* Action Buttons */}
+            <View
+              style={[
+                styles.editModalActions,
+                { borderTopColor: theme.border },
+              ]}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.editModalCancelBtn,
+                  {
+                    borderColor: theme.border,
+                    backgroundColor: theme.inputBg,
+                  },
+                ]}
+                onPress={() => setShowEditModal(false)}
+                disabled={savingGroup}
+              >
+                <Text
+                  style={[styles.modalCancelText, { color: theme.subText }]}
+                >
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.editModalSaveBtn,
+                  { backgroundColor: getColor() },
+                ]}
+                onPress={handleSaveGroupDetails}
+                disabled={savingGroup}
+              >
+                {savingGroup ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={18} color="#fff" />
+                    <Text style={styles.editModalSaveText}>Save Changes</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </WithDrawer>
   );
 }
 
-const styles = StyleSheet.create({
+const styles: any = StyleSheet.create({
   scroll: { flex: 1 },
   center: {
     flex: 1,
@@ -1522,10 +2240,22 @@ const styles = StyleSheet.create({
 
   // Hero
   hero: {
-    paddingTop: 32,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    width: "100%",
     position: "relative",
+    overflow: "hidden",
+  },
+  heroCoverContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: "hidden",
+  },
+  heroCoverImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover" as const,
   },
   heroOverlay: {
     position: "absolute",
@@ -1533,7 +2263,34 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.2)",
+  },
+  heroContent: {
+    width: "100%",
+    paddingTop: 56,
+    paddingBottom: 18,
+    paddingHorizontal: 16,
+    zIndex: 2,
+  },
+  heroCoverEditBtn: {
+    position: "absolute",
+    top: 14,
+    left: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+    elevation: 3,
+  },
+  heroCoverEditText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
   },
   heroChatBtn: {
     position: "absolute",
@@ -1542,9 +2299,11 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "rgba(0,0,0,0.25)",
+    backgroundColor: "rgba(0,0,0,0.35)",
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
     zIndex: 10,
   },
   chatUnreadBadge: {
@@ -1571,6 +2330,43 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 14,
     marginBottom: 16,
+  },
+  heroAvatarWrapper: {
+    position: "relative",
+    width: 68,
+    height: 68,
+  },
+  heroAvatarImage: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 2.5,
+    borderColor: "#fff",
+    resizeMode: "cover" as const,
+  },
+  heroEmojiCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  heroAvatarEditBtn: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#00467F",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
   },
   heroEmoji: { fontSize: 48 },
   heroInfo: { flex: 1 },
@@ -1624,16 +2420,36 @@ const styles = StyleSheet.create({
     borderColor: "#FFD0D0",
   },
   leaveBtnText: { color: "#FF6B6B", fontSize: 14, fontWeight: "600" },
+  adminBannerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    width: "100%",
+  },
   creatorBadge: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.18)",
     borderRadius: 12,
-    paddingVertical: 10,
+    paddingVertical: 11,
   },
   creatorBadgeText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  editGroupSectionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  editGroupSectionBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
 
   // Quick Info
   quickInfoRow: {
@@ -1878,4 +2694,226 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF6B6B",
   },
   modalConfirmText: { color: "#fff", fontSize: 14, fontWeight: "bold" },
+
+  // Edit Group Modal & Media
+  editModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    justifyContent: "flex-end",
+  },
+  editModalCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: "85%",
+    maxHeight: "92%",
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: Platform.OS === "ios" ? 36 : 24,
+    borderWidth: 1,
+    elevation: 25,
+  },
+  editModalScroll: {
+    flex: 1,
+    width: "100%",
+  },
+  editModalScrollContent: {
+    paddingBottom: 28,
+  },
+  editModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.06)",
+    marginBottom: 12,
+  },
+  editModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  editModalCloseBtn: {
+    padding: 6,
+    borderRadius: 16,
+  },
+  editSectionTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  mediaUploadRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 18,
+  },
+  mediaUploadBox: {
+    flex: 1,
+    height: 110,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    position: "relative",
+  },
+  mediaPreviewCover: {
+    ...StyleSheet.absoluteFill,
+    width: "100%",
+    height: "100%",
+  },
+  mediaPreviewProfile: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    position: "absolute",
+    top: 10,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  mediaEmptyBox: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  mediaEmptyBoxCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  mediaBtnLabelRow: {
+    position: "absolute",
+    bottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    elevation: 2,
+  },
+  mediaUploadBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  editFieldGroup: {
+    marginBottom: 14,
+  },
+  editFieldLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  editTextInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 46,
+    fontSize: 14,
+  },
+  editTextArea: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 80,
+    textAlignVertical: "top",
+    fontSize: 14,
+  },
+  freqChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  freqChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  freqChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  categoryChipItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  categoryChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+  },
+  switchLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  switchSub: {
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  editModalActions: {
+    flexDirection: "row",
+    gap: 12,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    marginTop: 6,
+  },
+  editModalCancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  editModalSaveBtn: {
+    flex: 2,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+    elevation: 3,
+  },
+  editModalSaveText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  privacyPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
 });

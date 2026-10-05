@@ -2,6 +2,8 @@ import React, { useRef } from 'react';
 import {
   Animated,
   Text,
+  Image,
+  ImageSourcePropType,
   StyleSheet,
   Pressable,
   Platform,
@@ -15,6 +17,7 @@ type Props = {
   label: string;
   icon?: string;
   emoji?: string;
+  image?: ImageSourcePropType | any;
   color?: string;
   isSelected: boolean;
   onPress: () => void;
@@ -24,6 +27,7 @@ export default function CategoryChip({
   label,
   icon,
   emoji,
+  image,
   color,
   isSelected,
   onPress,
@@ -64,7 +68,13 @@ export default function CategoryChip({
           isSelected ? Shadows.sm : {},
         ]}
       >
-        {emoji ? (
+        {image ? (
+          <Image
+            source={typeof image === 'string' ? { uri: image } : image}
+            style={styles.category3DIcon}
+            resizeMode="contain"
+          />
+        ) : emoji ? (
           <Text style={styles.emoji}>{emoji}</Text>
         ) : icon ? (
           <Ionicons
@@ -101,6 +111,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginRight: Spacing.sm,
   },
+  category3DIcon: {
+    width: 20,
+    height: 20,
+    marginRight: Spacing.xs + 2,
+  },
   icon: {
     marginRight: Spacing.xs + 2,
   },
@@ -112,3 +127,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 });
+

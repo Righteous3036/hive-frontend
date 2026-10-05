@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -16,7 +18,11 @@ import api, { setToken } from "../../components/api";
 import { useTheme } from "../../components/ThemeContext";
 import { useUser } from "../../components/UserContext";
 import { useResponsive } from "../../components/useResponsive";
-import { Palette, Shadows, Spacing, Radii } from "../../constants/theme";
+import { Palette, Radii, Shadows, Spacing } from "../../constants/theme";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const AUTH_BG_IMAGE = require("../../assets/images/welcome-bg.jpg");
 
 export default function LoginScreen({ navigation }: any) {
   const { isMobile } = useResponsive();
@@ -77,10 +83,11 @@ export default function LoginScreen({ navigation }: any) {
               profile_color: u.profile_color || Palette.primary,
               profile_picture: u.profile_picture || null,
               cover_photo: u.cover_photo || null,
+              theme_background: u.theme_background || null,
               token: res.data.token,
             });
           }
-        } catch (e) {}
+        } catch (e) { }
 
         if (accountRole === "admin") {
           navigation.navigate("AdminDashboard");
@@ -98,14 +105,22 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   const form = (
-    <View style={[styles.formBox, { backgroundColor: theme.card }]}>
+    <View
+      style={[
+        styles.formBox,
+        // Semi-transparent card background when over background image:
+        isMobile
+          ? { backgroundColor: styles.formBox.backgroundColor }
+          : { backgroundColor: theme.card },
+      ]}
+    >
       <Text
         style={[
           styles.formTitle,
           { color: theme.text, fontSize: fontSizes.xxl },
         ]}
       >
-        Welcome Back 👋
+        Welcome Back
       </Text>
       <Text
         style={[
@@ -332,34 +347,53 @@ export default function LoginScreen({ navigation }: any) {
   // ── MOBILE ──
   if (isMobile) {
     return (
-      <SafeAreaView style={[styles.mobileSafe, { backgroundColor: Palette.primary }]}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <ScrollView
-            contentContainerStyle={styles.mobileScroll}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+      <ImageBackground
+        source={AUTH_BG_IMAGE}
+        style={styles.fullBgImage}
+        resizeMode="cover"
+      >
+        <View style={styles.bgOverlay} />
+        <SafeAreaView style={styles.mobileSafe}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
           >
-            {/* Top Hero */}
-            <View style={styles.mobileHero}>
-              <View style={styles.circle1} />
-              <View style={styles.circle2} />
-              <View style={styles.mobileLogoBadge}>
-                <Text style={styles.mobileEmoji}>🎓</Text>
-              </View>
-              <Text style={styles.mobileAppName}>Hive 🐝</Text>
-              <Text style={styles.mobileTagline}>
-                Connect. Collaborate. Belong.
-              </Text>
-            </View>
+            <ScrollView
+              contentContainerStyle={styles.mobileScroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {navigation?.canGoBack?.() && (
+                <View style={styles.authBackRow}>
+                  <TouchableOpacity
+                    style={styles.authBackBtn}
+                    onPress={() => navigation.goBack()}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="arrow-back" size={16} color="#FFFFFF" />
+                    <Text style={styles.authBackBtnText}>Back</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
-            {/* Form */}
-            <View style={styles.mobileFormWrap}>{form}</View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+              {/* Top Hero */}
+              <View style={styles.mobileHero}>
+                <View style={styles.mobileLogoBadge}>
+                  <Ionicons name="school" size={40} color="#1E293B" />
+                  <View style={styles.tasselDot} />
+                </View>
+                <Text style={styles.mobileAppName}>Hive</Text>
+                <Text style={styles.mobileTagline}>
+                  Where your interests meet your campus community
+                </Text>
+              </View>
+
+              {/* Form */}
+              <View style={styles.mobileFormWrap}>{form}</View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
@@ -367,17 +401,19 @@ export default function LoginScreen({ navigation }: any) {
   return (
     <View style={[styles.webRoot, { backgroundColor: Palette.gray50 }]}>
       {/* Left Panel */}
-      <View style={styles.webLeft}>
-        <View style={styles.circle1} />
-        <View style={styles.circle2} />
-        <View style={styles.circle3} />
-
+      <ImageBackground
+        source={AUTH_BG_IMAGE}
+        style={styles.webLeft}
+        resizeMode="cover"
+      >
+        <View style={styles.webLeftOverlay} />
         <View style={styles.webLeftContent}>
           <View style={styles.webLogoBadge}>
-            <Text style={styles.webEmoji}>🎓</Text>
+            <Ionicons name="school" size={36} color="#1E293B" />
+            <View style={styles.tasselDot} />
           </View>
-          <Text style={styles.webAppName}>Hive 🐝</Text>
-          <Text style={styles.webTagline}>Connect. Collaborate. Belong.</Text>
+          <Text style={styles.webAppName}>Hive</Text>
+          <Text style={styles.webTagline}>Where your interests meet your campus community</Text>
           {[
             { icon: "people-outline", text: "Discover student groups" },
             { icon: "search-outline", text: "Search by interest or category" },
@@ -397,7 +433,7 @@ export default function LoginScreen({ navigation }: any) {
           ))}
           <Text style={styles.webLeftFooter}>Hive • University of Ghana</Text>
         </View>
-      </View>
+      </ImageBackground>
 
       {/* Right Panel */}
       <ScrollView
@@ -411,27 +447,73 @@ export default function LoginScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  fullBgImage: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+  bgOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10, 15, 29, 0.65)",
+  },
+  webLeftOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10, 15, 29, 0.7)",
+  },
+  authBackRow: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  authBackBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: Radii.full,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.25)",
+  },
+  authBackBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
   // ── MOBILE ──
   mobileSafe: { flex: 1 },
   mobileScroll: { flexGrow: 1 },
   mobileHero: {
     alignItems: "center",
-    paddingTop: 48,
-    paddingBottom: 32,
+    paddingTop: 36,
+    paddingBottom: 24,
     paddingHorizontal: Spacing.xl,
     position: "relative",
-    overflow: "hidden",
   },
   mobileFormWrap: { flex: 1 },
   mobileLogoBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: Spacing.md,
-    zIndex: 1,
+    marginBottom: Spacing.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  tasselDot: {
+    position: "absolute",
+    bottom: 14,
+    left: 18,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#F59E0B",
   },
   mobileEmoji: { fontSize: 40, zIndex: 1 },
   mobileAppName: {
@@ -548,6 +630,10 @@ const styles = StyleSheet.create({
     margin: Spacing.lg,
     borderRadius: Radii.xl,
     padding: Spacing.xl,
+    // Semi-transparent container color with alpha channel so the background image shows through clearly:
+    backgroundColor: "rgba(30, 41, 56, 0.75)", // RGBA color with alpha channel (e.g. rgba(30, 41, 56, 0.75) or rgba(15, 23, 42, 0.70))
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.14)",
     ...Shadows.lg,
   },
   formTitle: { fontWeight: "800", marginBottom: 6, letterSpacing: -0.3 },

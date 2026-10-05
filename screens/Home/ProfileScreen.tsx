@@ -380,6 +380,40 @@ export default function ProfileScreen({ navigation }: any) {
                 </Text>
               </View>
             )}
+            {user?.role === "admin" && (
+              <TouchableOpacity
+                style={[
+                  styles.badge,
+                  {
+                    backgroundColor: (theme.accent || "#F5A623") + "20",
+                    borderColor: theme.accent || "#F5A623",
+                    borderWidth: 1,
+                  },
+                ]}
+                onPress={() => navigation.navigate("AdminDashboard")}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Navigate to Admin Dashboard"
+              >
+                <Ionicons
+                  name="shield-checkmark"
+                  size={12}
+                  color={theme.accent || "#F5A623"}
+                />
+                <Text
+                  style={[
+                    styles.badgeText,
+                    {
+                      color: theme.accent || "#F5A623",
+                      fontWeight: "700",
+                      fontSize: fontSizes.xs,
+                    },
+                  ]}
+                >
+                  Admin Dashboard →
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
           {!!saveSuccess && (
             <View style={styles.successBanner}>
@@ -760,7 +794,10 @@ export default function ProfileScreen({ navigation }: any) {
 
               {/* Danger */}
               <View style={styles.dangerCard}>
-                <Text style={styles.dangerTitle}>⚠️ Danger Zone</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <Ionicons name="warning-outline" size={16} color="#FF6B6B" />
+                  <Text style={styles.dangerTitle}>Danger Zone</Text>
+                </View>
                 <Text style={styles.dangerDesc}>
                   Deleting your account is permanent and cannot be undone.
                 </Text>

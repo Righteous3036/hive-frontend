@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  DeviceEventEmitter,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -10,21 +11,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../components/api";
 import { useTheme } from "../../components/ThemeContext";
 import { useResponsive } from "../../components/useResponsive";
 import WithDrawer from "../../components/withDrawer";
+import GroupCoverThumbnail, {
+  GroupCoverHeader,
+  GroupProfileThumbnail,
+} from "../../components/GroupCoverThumbnail";
+import { GROUP_UPDATED_EVENT } from "../../components/groupEvents";
+import { CATEGORY_VECTOR_ICONS, getCategoryVectorIcon } from "../../constants/categories";
 
-const CAT_ICONS: any = {
-  study: "📚",
-  sports: "⚽",
-  tech: "💻",
-  arts: "🎨",
-  dance: "💃",
-  business: "🚀",
-  health: "🏥",
-  social: "🌍",
-};
+const CAT_ICONS: any = CATEGORY_VECTOR_ICONS;
 
 const CAT_COLORS: any = {
   study: "#4C9BE8",
@@ -47,7 +46,26 @@ export default function SavedScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchSaved();
-  }, []);
+
+    const sub = DeviceEventEmitter.addListener(GROUP_UPDATED_EVENT, (payload) => {
+      if (payload?.groupId) {
+        setGroups((prev) =>
+          prev.map((g) =>
+            g.id === payload.groupId ? { ...g, ...payload } : g
+          )
+        );
+      }
+    });
+
+    const unsubFocus = navigation.addListener("focus", () => {
+      fetchSaved();
+    });
+
+    return () => {
+      sub.remove();
+      unsubFocus();
+    };
+  }, [navigation]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -59,7 +77,10 @@ export default function SavedScreen({ navigation }: any) {
     try {
       setLoading(true);
       const res = await api.get("/users/saved");
-      if (res.data.success) setGroups(res.data.groups);
+      if (res.data.success) {
+        const list = res.data.groups || [];
+        setGroups(list);
+      }
     } catch (err) {
       console.log("Saved error:", err);
     } finally {
@@ -74,7 +95,7 @@ export default function SavedScreen({ navigation }: any) {
     } catch {}
   };
 
-  const getIcon = (g: any) => CAT_ICONS[g.category] || "📌";
+  const getIcon = (g: any) => getCategoryVectorIcon(g.category);
   const getColor = (g: any) => g.color || CAT_COLORS[g.category] || "#4C9BE8";
 
   const filtered = groups.filter(
@@ -165,7 +186,12 @@ export default function SavedScreen({ navigation }: any) {
             </View>
           ) : filtered.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyEmoji}>{search ? "🔍" : "🔖"}</Text>
+              <Ionicons
+                name={search ? "search-outline" : "bookmark-outline"}
+                size={54}
+                color={theme.subText}
+                style={{ marginBottom: 12 }}
+              />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
                 {search ? "No results" : "No saved groups"}
               </Text>
@@ -195,36 +221,69 @@ export default function SavedScreen({ navigation }: any) {
                 onPress={() =>
                   navigation.navigate("GroupDetails", { groupId: group.id })
                 }
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
-                <View
-                  style={[
-                    styles.cardIconBox,
-                    { backgroundColor: getColor(group) + "20" },
-                  ]}
+                {/* 2. Cover Photo Background (Hero Card Style) */}
+                <GroupCoverHeader
+                  coverImage={group.cover_image}
+                  category={group.category}
+                  height={96}
+                  borderRadius={16}
                 >
-                  <Text style={styles.cardEmoji}>{getIcon(group)}</Text>
-                </View>
+                  <View style={styles.cardHeaderStrip}>
+                    <View style={styles.cardHeaderLeft}>
+                      {/* 1. Profile Picture Thumbnail in the small section */}
+                      <GroupProfileThumbnail
+                        profileImage={group.profile_image}
+                        category={group.category}
+                        fallbackIcon={getIcon(group)}
+                        color={getColor(group)}
+                        size={38}
+                        borderRadius={10}
+                      />
+                      <View style={styles.categoryBadgeGlass}>
+                        <Text style={styles.categoryBadgeGlassText}>
+                          {group.category?.toUpperCase() || "GENERAL"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.unsaveBtnGlass}
+                      onPress={() => removeSaved(group.id)}
+                    >
+                      <Ionicons name="bookmark" size={18} color="#F59E0B" />
+                    </TouchableOpacity>
+                  </View>
+                </GroupCoverHeader>
 
                 <View style={styles.cardInfo}>
+                  <View style={styles.cardTopRow}>
+                    <Text
+                      style={[
+                        styles.cardName,
+                        { color: theme.text, fontSize: fontSizes.md + 1 },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {group.name}
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={theme.subText}
+                    />
+                  </View>
                   <Text
                     style={[
-                      styles.cardName,
-                      { color: theme.text, fontSize: fontSizes.md },
+                      styles.cardDesc,
+                      { color: theme.subText, fontSize: fontSizes.xs + 1 },
                     ]}
-                    numberOfLines={1}
+                    numberOfLines={2}
                   >
-                    {group.name}
+                    {group.description || "No description provided."}
                   </Text>
-                  <Text
-                    style={[
-                      styles.cardCat,
-                      { color: theme.subText, fontSize: fontSizes.xs },
-                    ]}
-                  >
-                    {group.category}
-                  </Text>
-                  {group.meeting_time && (
+                  {group.meeting_time ? (
                     <View style={styles.metaRow}>
                       <Ionicons
                         name="time-outline"
@@ -240,21 +299,7 @@ export default function SavedScreen({ navigation }: any) {
                         {group.meeting_time}
                       </Text>
                     </View>
-                  )}
-                </View>
-
-                <View style={styles.cardActions}>
-                  <TouchableOpacity
-                    style={styles.unsaveBtn}
-                    onPress={() => removeSaved(group.id)}
-                  >
-                    <Ionicons name="bookmark" size={20} color="#00467F" />
-                  </TouchableOpacity>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={18}
-                    color={theme.subText}
-                  />
+                  ) : null}
                 </View>
               </TouchableOpacity>
             ))
@@ -300,13 +345,48 @@ const styles = StyleSheet.create({
   },
   browseBtnText: { color: "#fff", fontSize: 14, fontWeight: "600" },
   card: {
-    borderRadius: 14,
+    borderRadius: 16,
+    flexDirection: "column",
+    borderWidth: 1,
+    overflow: "hidden",
+    elevation: 3,
+    marginBottom: 12,
+  },
+  cardHeaderStrip: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 14,
-    gap: 14,
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  cardHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  categoryBadgeGlass: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: "rgba(0, 0, 0, 0.52)",
     borderWidth: 1,
-    elevation: 2,
+    borderColor: "rgba(255, 255, 255, 0.25)",
+  },
+  categoryBadgeGlassText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  unsaveBtnGlass: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0, 0, 0, 0.50)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.20)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardIconBox: {
     width: 52,
@@ -316,8 +396,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cardEmoji: { fontSize: 26 },
-  cardInfo: { flex: 1, gap: 4 },
-  cardName: { fontWeight: "bold" },
+  cardInfo: { flex: 1, padding: 12, gap: 4 },
+  cardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  cardName: { fontWeight: "bold", flex: 1, marginRight: 8 },
+  cardDesc: {},
   cardCat: { textTransform: "capitalize" },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: {},

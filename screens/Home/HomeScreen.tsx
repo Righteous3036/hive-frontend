@@ -1,14 +1,15 @@
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  DeviceEventEmitter,
   Dimensions,
-  Image,
+  ImageBackground,
   Platform,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,46 +17,64 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
+  AppState,
+  AppStateStatus,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../components/api";
+import BottomTabBar from "../../components/BottomTabBar";
 import DrawerContent from "../../components/DrawerContent";
 import MobileHeader from "../../components/MobileHeader";
-import BottomTabBar from "../../components/BottomTabBar";
+import GroupCoverThumbnail, {
+  GroupCoverHeader,
+  GroupProfileThumbnail,
+} from "../../components/GroupCoverThumbnail";
+import { GROUP_UPDATED_EVENT } from "../../components/groupEvents";
 import { useNotifications } from "../../components/NotificationContext";
 import Sidebar from "../../components/Sidebar";
 import { useTheme } from "../../components/ThemeContext";
-import { useUser } from "../../components/UserContext";
-import { useResponsive } from "../../components/useResponsive";
-import { Radii, Shadows, Spacing } from "../../constants/theme";
 import CategoryChip from "../../components/ui/CategoryChip";
 import EmptyState from "../../components/ui/EmptyState";
 import FadeInView from "../../components/ui/FadeInView";
-import SkeletonCard from "../../components/ui/SkeletonCard";
 import FloatingBee from "../../components/ui/FloatingBee";
 import MemberAvatarRow, { MemberItem } from "../../components/ui/MemberAvatarRow";
 import ScreenTransition from "../../components/ui/ScreenTransition";
+import SkeletonCard from "../../components/ui/SkeletonCard";
+import { useUser } from "../../components/UserContext";
+import { useResponsive } from "../../components/useResponsive";
+import { getCategoryVectorIcon, CATEGORY_VECTOR_ICONS } from "../../constants/categories";
+import { Radii, Shadows, Spacing } from "../../constants/theme";
 
-const DRAWER_WIDTH = Math.min(Dimensions.get("window").width * 0.82, 320);
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 320);
+const CAMPUS_BANNER_IMAGE = require("../../assets/images/campus-banner.jpg");
+
+const CATEGORY_IMAGES: Record<string, any> = {
+  all: require("../../assets/images/categories/all.png"),
+  study: require("../../assets/images/categories/study.png"),
+  sports: require("../../assets/images/categories/sports.png"),
+  tech: require("../../assets/images/categories/tech.png"),
+  arts: require("../../assets/images/categories/arts.png"),
+  dance: require("../../assets/images/categories/dance.png"),
+  business: require("../../assets/images/categories/business.png"),
+  health: require("../../assets/images/categories/health.png"),
+  social: require("../../assets/images/categories/social.png"),
+};
 
 const CATEGORIES = [
-  { id: "all", label: "All", icon: "apps-outline", emoji: "⚡" },
-  { id: "study", label: "Study", icon: "book-outline", emoji: "📚" },
-  { id: "sports", label: "Sports", icon: "football-outline", emoji: "⚽" },
-  { id: "tech", label: "Tech", icon: "code-slash-outline", emoji: "💻" },
-  { id: "arts", label: "Arts", icon: "color-palette-outline", emoji: "🎨" },
+  { id: "all", label: "All", icon: "apps-outline", image: CATEGORY_IMAGES.all },
+  { id: "study", label: "Study", icon: "book-outline", image: CATEGORY_IMAGES.study },
+  { id: "sports", label: "Sports", icon: "football-outline", image: CATEGORY_IMAGES.sports },
+  { id: "tech", label: "Tech", icon: "code-slash-outline", image: CATEGORY_IMAGES.tech },
+  { id: "arts", label: "Arts", icon: "color-palette-outline", image: CATEGORY_IMAGES.arts },
+  { id: "dance", label: "Dance", icon: "musical-notes-outline", image: CATEGORY_IMAGES.dance },
+  { id: "business", label: "Business", icon: "briefcase-outline", image: CATEGORY_IMAGES.business },
+  { id: "health", label: "Health", icon: "fitness-outline", image: CATEGORY_IMAGES.health },
+  { id: "social", label: "Social", icon: "people-outline", image: CATEGORY_IMAGES.social },
 ];
 
-const CAT_ICONS: Record<string, string> = {
-  study: "📚",
-  sports: "⚽",
-  tech: "💻",
-  arts: "🎨",
-  dance: "💃",
-  business: "🚀",
-  health: "🏥",
-  social: "🌍",
-};
+const CAT_ICONS: Record<string, string> = CATEGORY_VECTOR_ICONS;
 
 const CAT_COLORS: Record<string, string> = {
   study: "#4C9BE8",
@@ -75,6 +94,7 @@ interface QuickStatItemProps {
   label: string;
   value: number;
   color: string;
+  labelColor?: string;
   isActive?: boolean;
   onPress: () => void;
   fontSizes: any;
@@ -85,6 +105,7 @@ function QuickStatItem({
   label,
   value,
   color,
+  labelColor,
   isActive = false,
   onPress,
   fontSizes,
@@ -124,7 +145,7 @@ function QuickStatItem({
         style={[
           styles.statItem,
           isActive && {
-            backgroundColor: color + "18",
+            backgroundColor: color + "24",
             borderRadius: Radii.md,
             paddingVertical: 4,
           },
@@ -139,7 +160,7 @@ function QuickStatItem({
           style={[
             styles.statLabel,
             {
-              color: isActive ? color : theme.textSecondary,
+              color: isActive ? color : (labelColor || theme.textSecondary),
               fontSize: fontSizes.xs,
               fontWeight: isActive ? "700" : "500",
             },
@@ -306,7 +327,7 @@ function InteractiveGroupCard({
           },
         ]}
       >
-        <Pressable
+        <TouchableOpacity
           style={[
             isMobile ? styles.mobileCard : styles.webCard,
             {
@@ -318,64 +339,61 @@ function InteractiveGroupCard({
           onPress={onPress}
           onPressIn={handleCardPressIn}
           onPressOut={handleCardPressOut}
+          activeOpacity={0.92}
           // @ts-ignore Web hover
-          onHoverIn={handleHoverIn}
+          onMouseEnter={handleHoverIn}
           // @ts-ignore Web hover
-          onHoverOut={handleHoverOut}
-          accessibilityRole="button"
+          onMouseLeave={handleHoverOut}
           accessibilityLabel={`${group.name} in ${group.category || "General"}`}
         >
-          {/* Header Strip with Category Pill & Save Action */}
-          <View
-            style={[
-              styles.cardHeaderStrip,
-              { backgroundColor: groupColor + "14" },
-            ]}
+          {/* Top Section / Header: Hero Card Style Cover Background (Screenshot 10) */}
+          <GroupCoverHeader
+            coverImage={group.cover_image}
+            category={group.category}
+            height={98}
+            borderRadius={Radii.xl}
           >
-            <View style={styles.cardHeaderLeft}>
-              <View
-                style={[
-                  styles.cardIconBox,
-                  { backgroundColor: groupColor + "24" },
-                ]}
-              >
-                <Text style={styles.cardEmoji}>{icon}</Text>
-              </View>
-              <View
-                style={[
-                  styles.categoryBadge,
-                  { backgroundColor: groupColor + "20" },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.categoryBadgeText,
-                    { color: groupColor, fontSize: fontSizes.xs - 1 },
-                  ]}
-                >
-                  {group.category?.toUpperCase() || "GENERAL"}
-                </Text>
-              </View>
-            </View>
-
-            {/* Interactive Save / Bookmark with Spring Pop */}
-            <Pressable
-              onPress={handleSavePress}
-              disabled={savingId === group.id}
-              accessibilityRole="button"
-              accessibilityLabel={isSaved ? "Unsave group" : "Save group"}
-              style={styles.saveBtn}
-              hitSlop={8}
-            >
-              <Animated.View style={{ transform: [{ scale: bookmarkScale }] }}>
-                <Ionicons
-                  name={isSaved ? "bookmark" : "bookmark-outline"}
-                  size={20}
-                  color={isSaved ? theme.primary : theme.textSecondary}
+            <View style={styles.cardHeaderStrip}>
+              <View style={styles.cardHeaderLeft}>
+                {/* 1. Profile Picture Thumbnail in the small section (Screenshot 9) */}
+                <GroupProfileThumbnail
+                  profileImage={group.profile_image}
+                  category={group.category}
+                  fallbackIcon={icon}
+                  color={groupColor}
+                  size={38}
+                  borderRadius={10}
                 />
-              </Animated.View>
-            </Pressable>
-          </View>
+                <View style={styles.categoryBadgeGlass}>
+                  <Text style={styles.categoryBadgeGlassText}>
+                    {group.category?.toUpperCase() || "GENERAL"}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Interactive Save / Bookmark with Spring Pop */}
+              <TouchableOpacity
+                onPress={(e: any) => {
+                  e?.stopPropagation?.();
+                  handleSavePress();
+                }}
+                disabled={savingId === group.id}
+                accessibilityRole="button"
+                accessibilityLabel={isSaved ? "Unsave group" : "Save group"}
+                style={styles.saveBtnGlass}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Animated.View style={{ transform: [{ scale: bookmarkScale }] }}>
+                  <Ionicons
+                    name={isSaved ? "bookmark" : "bookmark-outline"}
+                    size={20}
+                    color={isSaved ? "#F59E0B" : "#FFFFFF"}
+                  />
+                </Animated.View>
+              </TouchableOpacity>
+            </View>
+          </GroupCoverHeader>
 
           {/* Card Content Body */}
           <View style={styles.cardBody}>
@@ -447,19 +465,23 @@ function InteractiveGroupCard({
               </View>
 
               <Animated.View style={{ transform: [{ scale: joinBtnScale }] }}>
-                <Pressable
+                <TouchableOpacity
                   style={[
                     styles.joinActionButton,
                     isJoined
                       ? [styles.joinedButton, { backgroundColor: theme.successLight }]
                       : isPending
-                      ? [styles.pendingButton, { backgroundColor: theme.warningLight }]
-                      : [styles.primaryJoinButton, { backgroundColor: groupColor }],
+                        ? [styles.pendingButton, { backgroundColor: theme.warningLight }]
+                        : [styles.primaryJoinButton, { backgroundColor: groupColor }],
                   ]}
-                  onPress={onToggleJoin}
+                  onPress={(e: any) => {
+                    e?.stopPropagation?.();
+                    onToggleJoin();
+                  }}
                   onPressIn={handleJoinPressIn}
                   onPressOut={handleJoinPressOut}
                   disabled={joiningId === group.id}
+                  activeOpacity={0.8}
                   accessibilityRole="button"
                   accessibilityLabel={joinLabel}
                 >
@@ -473,8 +495,8 @@ function InteractiveGroupCard({
                           color: isJoined
                             ? theme.success
                             : isPending
-                            ? theme.warning
-                            : "#FFFFFF",
+                              ? theme.warning
+                              : "#FFFFFF",
                           fontSize: fontSizes.xs,
                           fontWeight: "700",
                         },
@@ -483,69 +505,16 @@ function InteractiveGroupCard({
                       {joinLabel}
                     </Text>
                   )}
-                </Pressable>
+                </TouchableOpacity>
               </Animated.View>
             </View>
           </View>
-        </Pressable>
+        </TouchableOpacity>
       </Animated.View>
     </FadeInView>
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-// SUB-COMPONENT: Warm Amber Floating Action Button (FAB)
-// ─────────────────────────────────────────────────────────────
-interface FABProps {
-  onPress: () => void;
-  theme: any;
-}
-
-function FloatingActionButton({ onPress, theme }: FABProps) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.88,
-      tension: 160,
-      friction: 5,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1.0,
-      tension: 110,
-      friction: 5,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  return (
-    <Animated.View
-      style={[
-        styles.fabContainer,
-        { transform: [{ scale: scaleAnim }] },
-      ]}
-    >
-      <Pressable
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        style={[
-          styles.fabButton,
-          { backgroundColor: theme.amber || '#F59E0B' },
-          (Shadows as any).amberGlow || Shadows.lg,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Create New Group"
-      >
-        <Ionicons name="add" size={32} color="#0B0F19" />
-      </Pressable>
-    </Animated.View>
-  );
-}
 
 
 
@@ -610,11 +579,65 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   useEffect(() => {
+    // Purge old device-only local cache overrides so database remains 100% single source of truth
+    AsyncStorage.getAllKeys().then((keys) => {
+      const stale = keys.filter(
+        (k) =>
+          k.startsWith("group_custom_") ||
+          k.startsWith("group_cover_") ||
+          k.startsWith("group_profile_")
+      );
+      if (stale.length > 0) {
+        AsyncStorage.multiRemove(stale).catch(() => {});
+      }
+    }).catch(() => {});
+
     fetchGroups();
     fetchSavedGroups();
     fetchOnlineMembers();
     refreshUnread();
-  }, []);
+
+    const sub = DeviceEventEmitter.addListener(GROUP_UPDATED_EVENT, (payload) => {
+      if (payload?.groupId) {
+        setGroups((prev) =>
+          prev.map((g) =>
+            g.id === payload.groupId ? { ...g, ...payload } : g
+          )
+        );
+      }
+    });
+
+    const unsubFocus = navigation.addListener("focus", () => {
+      fetchGroups(true);
+      fetchSavedGroups();
+      fetchOnlineMembers();
+      refreshUnread();
+    });
+
+    // Auto-sync when app returns from background or window focuses on web
+    const appStateSub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") {
+        fetchGroups(true);
+        fetchSavedGroups();
+        fetchOnlineMembers();
+        refreshUnread();
+      }
+    });
+
+    // Seamless real-time sync heartbeat between phone & laptop previews
+    const syncInterval = setInterval(() => {
+      fetchGroups(true);
+      fetchSavedGroups();
+      fetchOnlineMembers();
+    }, 8000);
+
+    return () => {
+      sub.remove();
+      unsubFocus();
+      appStateSub.remove();
+      clearInterval(syncInterval);
+    };
+  }, [navigation]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -654,7 +677,7 @@ export default function HomeScreen({ navigation }: any) {
             });
             rawUsers = Array.from(userMap.values());
           }
-        } catch {}
+        } catch { }
       }
 
       if (rawUsers.length > 0) {
@@ -708,19 +731,27 @@ export default function HomeScreen({ navigation }: any) {
     }
   };
 
-  const fetchGroups = async () => {
+  const fetchGroups = async (silent?: boolean | any) => {
+    const isSilent = silent === true;
     try {
-      setLoading(true);
-      setError("");
+      if (!isSilent) {
+        setLoading(true);
+        setError("");
+      }
       const res = await api.get("/groups");
       if (res.data.success) {
-        setGroups(res.data.groups);
-        checkMemberships(res.data.groups);
+        const list = res.data.groups || [];
+        setGroups(list);
+        checkMemberships(list);
       }
     } catch {
-      setError("Failed to load groups. Please check your connection.");
+      if (!isSilent) {
+        setError("Failed to load groups. Please check your connection.");
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -730,7 +761,7 @@ export default function HomeScreen({ navigation }: any) {
       if (res.data.success) {
         setSavedGroups(res.data.groups.map((g: any) => g.id));
       }
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const checkMemberships = async (list: any[]) => {
@@ -744,7 +775,7 @@ export default function HomeScreen({ navigation }: any) {
             if (res.data.isMember) joined.push(g.id);
             if (res.data.isPending) pending.push(g.id);
           }
-        } catch {}
+        } catch { }
       })
     );
     setJoinedGroups(joined);
@@ -759,8 +790,8 @@ export default function HomeScreen({ navigation }: any) {
     const updatedJoined = wasJoined
       ? joinedGroups.filter((id) => id !== groupId)
       : group?.require_approval
-      ? joinedGroups
-      : [...joinedGroups, groupId];
+        ? joinedGroups
+        : [...joinedGroups, groupId];
 
     // Optimistic update
     if (wasJoined) {
@@ -775,11 +806,11 @@ export default function HomeScreen({ navigation }: any) {
       p.map((g) =>
         g.id === groupId
           ? {
-              ...g,
-              member_count: wasJoined
-                ? Math.max(0, (g.member_count || 0) - 1)
-                : (g.member_count || 0) + 1,
-            }
+            ...g,
+            member_count: wasJoined
+              ? Math.max(0, (g.member_count || 0) - 1)
+              : (g.member_count || 0) + 1,
+          }
           : g
       )
     );
@@ -853,12 +884,12 @@ export default function HomeScreen({ navigation }: any) {
       quickFilter === "all"
         ? true
         : quickFilter === "joined"
-        ? joinedGroups.includes(g.id)
-        : savedGroups.includes(g.id);
+          ? joinedGroups.includes(g.id)
+          : savedGroups.includes(g.id);
     return catOk && searchOk && filterOk;
   });
 
-  const getIcon = (g: any) => CAT_ICONS[g.category] || "📌";
+  const getIcon = (g: any) => getCategoryVectorIcon(g.category);
   const getColor = (g: any) =>
     g.color || CAT_COLORS[g.category] || theme.primary;
 
@@ -884,130 +915,106 @@ export default function HomeScreen({ navigation }: any) {
       {/* 1. Hero Welcome Banner & Statistics Widgets (At the very top) */}
       <FadeInView delay={0} direction="down">
         <View style={styles.heroWrapper}>
-          <LinearGradient
-            colors={
-              isDarkMode
-                ? ["#1E2938", "#111726"]
-                : ["#EBF4FF", "#F4F7FC"]
-            }
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[
-              styles.heroCard,
-              { borderColor: theme.borderLight },
-              Shadows.sm,
-            ]}
+          <ImageBackground
+            source={CAMPUS_BANNER_IMAGE}
+            style={styles.heroCard}
+            imageStyle={styles.heroCardImage}
           >
-            <View style={styles.heroTop}>
-              <View style={styles.heroTextContainer}>
-                <View style={styles.badgeRow}>
-                  <View
-                    style={[
-                      styles.campusPill,
-                      { backgroundColor: theme.primaryLight },
-                    ]}
-                  >
+            <LinearGradient
+              colors={[
+                "rgba(0, 0, 0, 0.30)",
+                "rgba(0, 0, 0, 0.18)",
+                "rgba(0, 0, 0, 0.10)",
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0.25, y: 1 }}
+              style={styles.heroGradientContent}
+            >
+              <View style={styles.heroTop}>
+                <View style={styles.heroTextContainer}>
+                  <View style={styles.badgeRow}>
+                    <View style={styles.campusPill}>
+                      <Ionicons name="school" size={12} color="#FFFFFF" style={{ marginRight: 5 }} />
+                      <Text style={styles.campusPillText}>
+                        Campus Life
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Greeting with Lively Floating Bee */}
+                  <View style={styles.greetingRow}>
                     <Text
                       style={[
-                        styles.campusPillText,
-                        { color: theme.primary },
+                        styles.greetingTitle,
+                        { fontSize: fontSizes.xl + 3 },
                       ]}
                     >
-                      🎓 Campus Life
+                      Welcome, {user?.name?.split(" ")[0] || "RIGHTEOUS"}!
                     </Text>
+                    <FloatingBee size={24} style={{ marginLeft: 6 }} />
                   </View>
-                </View>
 
-                {/* Greeting with Lively Floating Bee */}
-                <View style={styles.greetingRow}>
                   <Text
                     style={[
-                      styles.greetingTitle,
-                      { color: theme.text, fontSize: fontSizes.xl + 2 },
+                      styles.greetingSubtitle,
+                      {
+                        fontSize: fontSizes.sm,
+                      },
                     ]}
                   >
-                    Welcome, {user?.name?.split(" ")[0] || "RIGHTEOUS"}!
+                    Discover communities, study circles, and vibrant campus
+                    activities.
                   </Text>
-                  <FloatingBee size={24} style={{ marginLeft: 6 }} />
                 </View>
 
-                <Text
-                  style={[
-                    styles.greetingSubtitle,
-                    {
-                      color: theme.textSecondary,
-                      fontSize: fontSizes.sm,
-                    },
-                  ]}
-                >
-                  Discover communities, study circles, and vibrant campus
-                  activities.
-                </Text>
+                {!isMobile && (
+                  <View style={styles.heroGraphic}>
+                    <FloatingBee size={48} />
+                  </View>
+                )}
               </View>
 
-              {!isMobile && (
-                <View style={styles.heroGraphic}>
-                  <FloatingBee size={48} />
-                </View>
-              )}
-            </View>
-
-            {/* Quick Stats Bar with Interactive Filtering */}
-            <View
-              style={[
-                styles.statsBar,
-                {
-                  backgroundColor: isDarkMode ? "#171A2E" : "#FFFFFF",
-                  borderColor: theme.border,
-                },
-                Shadows.sm,
-              ]}
-            >
-              <QuickStatItem
-                label="Total Groups"
-                value={groups.length}
-                color={theme.primary}
-                isActive={quickFilter === "all"}
-                onPress={() => setQuickFilter("all")}
-                fontSizes={fontSizes}
-                theme={theme}
-              />
-              <View
-                style={[
-                  styles.statDivider,
-                  { backgroundColor: theme.border },
-                ]}
-              />
-              <QuickStatItem
-                label="Joined"
-                value={joinedGroups.length}
-                color={theme.success}
-                isActive={quickFilter === "joined"}
-                onPress={() =>
-                  setQuickFilter(quickFilter === "joined" ? "all" : "joined")
-                }
-                fontSizes={fontSizes}
-                theme={theme}
-              />
-              <View
-                style={[
-                  styles.statDivider,
-                  { backgroundColor: theme.border },
-                ]}
-              />
-              <QuickStatItem
-                label="Saved"
-                value={savedGroups.length}
-                color={theme.accent}
-                isActive={quickFilter === "saved"}
-                onPress={() =>
-                  setQuickFilter(quickFilter === "saved" ? "all" : "saved")
-                }
-                fontSizes={fontSizes}
-                theme={theme}
-              />
-            </View>
-          </LinearGradient>
+              {/* Quick Stats Bar with Interactive Filtering */}
+              <View style={styles.statsBar}>
+                <QuickStatItem
+                  label="Total Groups"
+                  value={groups.length}
+                  color="#60A5FA"
+                  labelColor="rgba(255, 255, 255, 0.85)"
+                  isActive={quickFilter === "all"}
+                  onPress={() => setQuickFilter("all")}
+                  fontSizes={fontSizes}
+                  theme={theme}
+                />
+                <View style={styles.statDivider} />
+                <QuickStatItem
+                  label="Joined"
+                  value={joinedGroups.length}
+                  color="#4ADE80"
+                  labelColor="rgba(255, 255, 255, 0.85)"
+                  isActive={quickFilter === "joined"}
+                  onPress={() =>
+                    setQuickFilter(quickFilter === "joined" ? "all" : "joined")
+                  }
+                  fontSizes={fontSizes}
+                  theme={theme}
+                />
+                <View style={styles.statDivider} />
+                <QuickStatItem
+                  label="Saved"
+                  value={savedGroups.length}
+                  color="#FBBF24"
+                  labelColor="rgba(255, 255, 255, 0.85)"
+                  isActive={quickFilter === "saved"}
+                  onPress={() =>
+                    setQuickFilter(quickFilter === "saved" ? "all" : "saved")
+                  }
+                  fontSizes={fontSizes}
+                  theme={theme}
+                />
+              </View>
+            </LinearGradient>
+          </ImageBackground>
         </View>
       </FadeInView>
 
@@ -1083,7 +1090,7 @@ export default function HomeScreen({ navigation }: any) {
                 key={cat.id}
                 id={cat.id}
                 label={cat.label}
-                emoji={cat.emoji}
+                image={cat.image}
                 icon={cat.icon}
                 color={CAT_COLORS[cat.id]}
                 isSelected={activeCategory === cat.id}
@@ -1120,7 +1127,7 @@ export default function HomeScreen({ navigation }: any) {
       {/* Error State */}
       {!loading && error.length > 0 && (
         <View style={styles.center}>
-          <Text style={styles.errorEmoji}>⚠️</Text>
+          <Ionicons name="alert-circle-outline" size={48} color={theme.error || "#EF4444"} style={{ marginBottom: 12 }} />
           <Text
             style={[
               styles.centerText,
@@ -1131,7 +1138,7 @@ export default function HomeScreen({ navigation }: any) {
           </Text>
           <TouchableOpacity
             style={[styles.retryBtn, { backgroundColor: theme.primary }]}
-            onPress={fetchGroups}
+            onPress={() => fetchGroups()}
           >
             <Text style={[styles.retryText, { fontSize: fontSizes.sm }]}>
               Try Again
@@ -1154,13 +1161,12 @@ export default function HomeScreen({ navigation }: any) {
                 {quickFilter === "joined"
                   ? "My Joined Groups"
                   : quickFilter === "saved"
-                  ? "My Saved Groups"
-                  : activeCategory === "all"
-                  ? "Explore Groups"
-                  : `${
-                      activeCategory.charAt(0).toUpperCase() +
+                    ? "My Saved Groups"
+                    : activeCategory === "all"
+                      ? "Explore Groups"
+                      : `${activeCategory.charAt(0).toUpperCase() +
                       activeCategory.slice(1)
-                    } Groups`}
+                      } Groups`}
               </Text>
               <View
                 style={[
@@ -1188,24 +1194,24 @@ export default function HomeScreen({ navigation }: any) {
                 search.length > 0
                   ? `No groups match "${search}". Try searching for something else.`
                   : quickFilter === "joined"
-                  ? "You haven't joined any groups yet. Explore groups and tap Join!"
-                  : quickFilter === "saved"
-                  ? "You haven't bookmarked any groups yet. Tap the bookmark icon on any card!"
-                  : "No groups available in this category yet. Be the first to create one!"
+                    ? "You haven't joined any groups yet. Explore groups and tap Join!"
+                    : quickFilter === "saved"
+                      ? "You haven't bookmarked any groups yet. Tap the bookmark icon on any card!"
+                      : "No groups available in this category yet. Be the first to create one!"
               }
               actionTitle={
                 search.length > 0
                   ? "Clear Search"
                   : quickFilter !== "all"
-                  ? "View All Groups"
-                  : "Create Group"
+                    ? "View All Groups"
+                    : "Create Group"
               }
               onAction={
                 search.length > 0
                   ? () => setSearch("")
                   : quickFilter !== "all"
-                  ? () => setQuickFilter("all")
-                  : () => navigation.navigate("CreateGroup")
+                    ? () => setQuickFilter("all")
+                    : () => navigation.navigate("CreateGroup")
               }
             />
           ) : (
@@ -1247,7 +1253,10 @@ export default function HomeScreen({ navigation }: any) {
   // ── MOBILE LAYOUT WITH SLIDING DRAWER AND BOTTOM TAB BAR ──
   if (isMobile) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+      <SafeAreaView
+        edges={["top", "left", "right"]}
+        style={[styles.safe, { backgroundColor: theme.bg }]}
+      >
         <View style={[styles.mobileRoot, { backgroundColor: theme.bg }]}>
           <MobileHeader
             title="Hive 🐝"
@@ -1259,10 +1268,6 @@ export default function HomeScreen({ navigation }: any) {
             <ScreenTransition>
               {content}
             </ScreenTransition>
-            <FloatingActionButton
-              onPress={() => navigation.navigate("CreateGroup")}
-              theme={theme}
-            />
           </View>
 
           <BottomTabBar navigation={navigation} activeScreen="Home" />
@@ -1306,16 +1311,12 @@ export default function HomeScreen({ navigation }: any) {
         <ScreenTransition>
           {content}
         </ScreenTransition>
-        <FloatingActionButton
-          onPress={() => navigation.navigate("CreateGroup")}
-          theme={theme}
-        />
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles: any = StyleSheet.create({
   safe: { flex: 1 },
   mobileRoot: { flex: 1 },
   webRoot: { flexDirection: "row", flex: 1 },
@@ -1337,10 +1338,29 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   heroCard: {
-    borderRadius: Radii.xl,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: Spacing.xl,
+    borderColor: "rgba(255, 255, 255, 0.18)",
     overflow: "hidden",
+    backgroundColor: "#0B1120",
+    ...Shadows.md,
+  },
+  heroCardImage: {
+    borderRadius: 20,
+    // ── Direct Sizing & Scaling Controls (Use Numbers or %) ──
+    width: "100%",       // Can be "100%" or exact numeric pixels (e.g. SCREEN_WIDTH or 380)
+    height: "100%",      // Can be "100%" or exact numeric pixels (e.g. 240, 260, 300)
+    resizeMode: "cover" as const, // Options: "cover" | "contain" | "stretch" | "center"
+    // ── Fine-tune Position Offsets & Zoom with Numbers ──
+    transform: [
+      { translateY: 0 }, // Vertical offset: negative moves up (e.g. -20), positive moves down (e.g. 20)
+      { translateX: 0 }, // Horizontal offset: negative moves left (e.g. -15), positive moves right (e.g. 15)
+      { scale: 1.0 },    // Zoom scale: > 1.0 zooms in (e.g. 1.1), < 1.0 zooms out (e.g. 0.95)
+    ],
+  },
+  heroGradientContent: {
+    padding: Spacing.xl,
+    borderRadius: 20,
   },
   heroTop: {
     flexDirection: "row",
@@ -1356,13 +1376,18 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   campusPill: {
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.3)",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
     borderRadius: Radii.full,
+    alignSelf: "flex-start",
   },
   campusPillText: {
     fontWeight: "700",
     fontSize: 12,
+    color: "#FFFFFF",
   },
   greetingRow: {
     flexDirection: "row",
@@ -1372,9 +1397,17 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.5,
     marginBottom: Spacing.xs,
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0, 0, 0, 0.85)",
+    textShadowOffset: { width: 0, height: 1.5 },
+    textShadowRadius: 6,
   },
   greetingSubtitle: {
     lineHeight: 20,
+    color: "#FFFFFF",
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   heroGraphic: {
     marginLeft: Spacing.lg,
@@ -1390,6 +1423,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     borderRadius: Radii.lg,
     borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.22)",
+    backgroundColor: "rgba(10, 16, 32, 0.60)",
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.sm,
   },
@@ -1413,6 +1448,7 @@ const styles = StyleSheet.create({
   statDivider: {
     width: 1,
     height: 28,
+    backgroundColor: "rgba(255, 255, 255, 0.16)",
   },
 
   // Search Section
@@ -1537,8 +1573,31 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.5,
   },
+  categoryBadgeGlass: {
+    paddingHorizontal: Spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: Radii.full,
+    backgroundColor: "rgba(0, 0, 0, 0.52)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.25)",
+  },
+  categoryBadgeGlassText: {
+    fontWeight: "800",
+    letterSpacing: 0.6,
+    color: "#FFFFFF",
+  },
   saveBtn: {
     padding: Spacing.xs,
+  },
+  saveBtnGlass: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(0, 0, 0, 0.52)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.25)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardBody: {
     padding: Spacing.md,
@@ -1648,18 +1707,5 @@ const styles = StyleSheet.create({
 
 
 
-  // FAB
-  fabContainer: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    zIndex: 999,
-  },
-  fabButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+
 });

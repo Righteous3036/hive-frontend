@@ -110,7 +110,7 @@ function AvatarBubble({ member }: AvatarItemProps) {
             styles.statusDot,
             {
               backgroundColor: theme.onlineGreen || '#10B981',
-              borderColor: theme.bg || '#0B0F19',
+              borderColor: theme.solidBg || '#0B0F19',
             },
           ]}
         />

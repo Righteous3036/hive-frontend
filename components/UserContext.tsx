@@ -13,6 +13,7 @@ export type User = {
   profile_color: string;
   profile_picture: string | null;
   cover_photo: string | null;
+  theme_background?: string | null;
   bio: string;
   token?: string;
 };

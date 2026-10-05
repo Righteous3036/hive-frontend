@@ -139,7 +139,20 @@ export default function DrawerContent({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.nav}>
-          {NAV.map((item, i) => {
+          {[
+            ...NAV,
+            ...(user?.role === "admin"
+              ? [
+                  {
+                    icon: "shield-checkmark-outline",
+                    activeIcon: "shield-checkmark",
+                    label: "Admin Dashboard",
+                    screen: "AdminDashboard",
+                    isAdmin: true,
+                  },
+                ]
+              : []),
+          ].map((item: any, i) => {
             const active =
               activeScreen === item.label || activeScreen === item.screen;
             return (
@@ -150,6 +163,14 @@ export default function DrawerContent({
                   active && {
                     backgroundColor: theme.primaryLight,
                   },
+                  item.isAdmin && {
+                    backgroundColor: active
+                      ? (theme.accent || "#F5A623") + "25"
+                      : (theme.accent || "#F5A623") + "12",
+                    borderWidth: 1,
+                    borderColor: (theme.accent || "#F5A623") + "35",
+                    marginTop: 6,
+                  },
                 ]}
                 onPress={() => go(item.screen)}
                 activeOpacity={0.7}
@@ -158,7 +179,13 @@ export default function DrawerContent({
                   <Ionicons
                     name={(active ? item.activeIcon : item.icon) as any}
                     size={20}
-                    color={active ? theme.primary : theme.textSecondary}
+                    color={
+                      item.isAdmin
+                        ? theme.accent || "#F5A623"
+                        : active
+                        ? theme.primary
+                        : theme.textSecondary
+                    }
                   />
                   {item.label === "Notifications" && unreadCount > 0 && (
                     <View style={[styles.badge, { backgroundColor: theme.error }]}>
@@ -172,18 +199,44 @@ export default function DrawerContent({
                   style={[
                     styles.navLabel,
                     {
-                      color: active ? theme.primary : theme.text,
+                      color: item.isAdmin
+                        ? theme.accent || "#F5A623"
+                        : active
+                        ? theme.primary
+                        : theme.text,
                       fontSize: fontSizes.md,
-                      fontWeight: active ? "700" : "500",
+                      fontWeight: active || item.isAdmin ? "700" : "500",
                     },
                   ]}
                 >
                   {item.label}
                 </Text>
-                {active && (
+                {item.isAdmin ? (
                   <View
-                    style={[styles.activeBar, { backgroundColor: theme.primary }]}
-                  />
+                    style={{
+                      backgroundColor: theme.accent || "#F5A623",
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: "#FFFFFF",
+                        fontSize: 9,
+                        fontWeight: "800",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      ADMIN
+                    </Text>
+                  </View>
+                ) : (
+                  active && (
+                    <View
+                      style={[styles.activeBar, { backgroundColor: theme.primary }]}
+                    />
+                  )
                 )}
               </TouchableOpacity>
             );

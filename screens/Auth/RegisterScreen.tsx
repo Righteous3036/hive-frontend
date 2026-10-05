@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -16,7 +18,11 @@ import api, { setToken } from "../../components/api";
 import { useTheme } from "../../components/ThemeContext";
 import { useUser } from "../../components/UserContext";
 import { useResponsive } from "../../components/useResponsive";
-import { Palette, Shadows, Spacing, Radii } from "../../constants/theme";
+import { Palette, Radii, Shadows, Spacing } from "../../constants/theme";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+const AUTH_BG_IMAGE = require("../../assets/images/welcome-bg.jpg");
 
 export default function RegisterScreen({ navigation }: any) {
   const { isMobile } = useResponsive();
@@ -193,7 +199,15 @@ export default function RegisterScreen({ navigation }: any) {
 
   // ── OTP STEP ──
   const otpContent = (
-    <View style={[styles.formBox, { backgroundColor: theme.card }]}>
+    <View
+      style={[
+        styles.formBox,
+        // Semi-transparent card background when over background image:
+        isMobile
+          ? { backgroundColor: styles.formBox.backgroundColor }
+          : { backgroundColor: theme.card },
+      ]}
+    >
       <TouchableOpacity
         style={styles.backToForm}
         onPress={() => {
@@ -207,7 +221,7 @@ export default function RegisterScreen({ navigation }: any) {
       </TouchableOpacity>
 
       <View style={styles.otpIconBox}>
-        <Text style={styles.otpEmoji}>📧</Text>
+        <Ionicons name="mail-outline" size={32} color="#00467F" />
       </View>
 
       <Text
@@ -309,14 +323,22 @@ export default function RegisterScreen({ navigation }: any) {
 
   // ── FORM STEP ──
   const formContent = (
-    <View style={[styles.formBox, { backgroundColor: theme.card }]}>
+    <View
+      style={[
+        styles.formBox,
+        // Semi-transparent card background when over background image:
+        isMobile
+          ? { backgroundColor: styles.formBox.backgroundColor }
+          : { backgroundColor: theme.card },
+      ]}
+    >
       <Text
         style={[
           styles.formTitle,
           { color: theme.text, fontSize: fontSizes.xxl },
         ]}
       >
-        Create Account ✨
+        Create Account
       </Text>
       <Text
         style={[
@@ -670,93 +692,111 @@ export default function RegisterScreen({ navigation }: any) {
   // ── MOBILE ──
   if (isMobile) {
     return (
-      <SafeAreaView style={[styles.mobileSafe, { backgroundColor: Palette.primary }]}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <ScrollView
-            contentContainerStyle={styles.mobileScroll}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+      <ImageBackground
+        source={AUTH_BG_IMAGE}
+        style={styles.fullBgImage}
+        resizeMode="cover"
+      >
+        <View style={styles.bgOverlay} />
+        <SafeAreaView style={styles.mobileSafe}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
           >
-            <View style={styles.mobileHero}>
-              <View style={styles.circle1} />
-              <View style={styles.circle2} />
-              {step === "form" ? (
-                <>
-                  <TouchableOpacity
-                    style={styles.backBtn}
-                    onPress={() => navigation.navigate("Login")}
-                  >
-                    <Ionicons name="arrow-back" size={16} color="#fff" />
-                    <Text style={styles.backBtnText}>Back to Login</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.mobileEmoji}>🎓</Text>
-                  <Text style={styles.mobileAppName}>Join Hive 🐝</Text>
-                  <Text style={styles.mobileTagline}>
-                    Your campus life starts here
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.mobileEmoji}>📧</Text>
-                  <Text style={styles.mobileAppName}>Verify Your Email</Text>
-                  <Text style={styles.mobileTagline}>
-                    Enter the 6-digit code we sent you
-                  </Text>
-                </>
-              )}
-            </View>
-            <View style={styles.mobileFormWrap}>{content}</View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+            <ScrollView
+              contentContainerStyle={styles.mobileScroll}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.mobileHero}>
+                {step === "form" ? (
+                  <>
+                    <TouchableOpacity
+                      style={styles.backBtn}
+                      onPress={() => navigation.navigate("Login")}
+                    >
+                      <Ionicons name="arrow-back" size={16} color="#fff" />
+                      <Text style={styles.backBtnText}>Back to Login</Text>
+                    </TouchableOpacity>
+                    <View style={styles.mobileLogoBadge}>
+                      <Ionicons name="school" size={40} color="#1E293B" />
+                      <View style={styles.tasselDot} />
+                    </View>
+                    <Text style={styles.mobileAppName}>Join Hive</Text>
+                    <Text style={styles.mobileTagline}>
+                      Where your interests meet your campus community
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.mobileLogoBadge}>
+                      <Ionicons name="mail-open" size={36} color="#1E293B" />
+                    </View>
+                    <Text style={styles.mobileAppName}>Verify Your Email</Text>
+                    <Text style={styles.mobileTagline}>
+                      Enter the 6-digit code we sent you
+                    </Text>
+                  </>
+                )}
+              </View>
+              <View style={styles.mobileFormWrap}>{content}</View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </ImageBackground>
     );
   }
 
   // ── WEB ──
   return (
     <View style={[styles.webRoot, { backgroundColor: Palette.gray50 }]}>
-      <View style={styles.webLeft}>
-        <View style={styles.circle1} />
-        <View style={styles.circle2} />
-        <Text style={styles.webEmoji}>🎓</Text>
-        <Text style={styles.webAppName}>Join Hive 🐝</Text>
-        <Text style={styles.webTagline}>Your campus life starts here</Text>
-        {[
-          {
-            step: "01",
-            title: "Fill in your details",
-            desc: "Enter your student information",
-          },
-          {
-            step: "02",
-            title: "Verify your email",
-            desc: "Enter the OTP sent to your email",
-          },
-          {
-            step: "03",
-            title: "Discover groups",
-            desc: "AI matches you with the best groups",
-          },
-        ].map((s, i) => (
-          <View key={i} style={styles.stepItem}>
-            <View
-              style={[
-                styles.stepBadge,
-                i < (step === "otp" ? 1 : 0) && { backgroundColor: Palette.success },
-              ]}
-            >
-              <Text style={styles.stepNum}>{s.step}</Text>
-            </View>
-            <View>
-              <Text style={styles.stepTitle}>{s.title}</Text>
-              <Text style={styles.stepDesc}>{s.desc}</Text>
-            </View>
+      <ImageBackground
+        source={AUTH_BG_IMAGE}
+        style={styles.webLeft}
+        resizeMode="cover"
+      >
+        <View style={styles.webLeftOverlay} />
+        <View style={styles.webLeftContent}>
+          <View style={styles.webLogoBadge}>
+            <Ionicons name="school" size={36} color="#1E293B" />
+            <View style={styles.tasselDot} />
           </View>
-        ))}
-      </View>
+          <Text style={styles.webAppName}>Join Hive</Text>
+          <Text style={styles.webTagline}>Where your interests meet your campus community</Text>
+          {[
+            {
+              step: "01",
+              title: "Fill in your details",
+              desc: "Enter your student information",
+            },
+            {
+              step: "02",
+              title: "Verify your email",
+              desc: "Enter the OTP sent to your email",
+            },
+            {
+              step: "03",
+              title: "Discover groups",
+              desc: "AI matches you with the best groups",
+            },
+          ].map((s, i) => (
+            <View key={i} style={styles.stepItem}>
+              <View
+                style={[
+                  styles.stepBadge,
+                  i < (step === "otp" ? 1 : 0) && { backgroundColor: Palette.success },
+                ]}
+              >
+                <Text style={styles.stepNum}>{s.step}</Text>
+              </View>
+              <View>
+                <Text style={styles.stepTitle}>{s.title}</Text>
+                <Text style={styles.stepDesc}>{s.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      </ImageBackground>
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={styles.webRightContent}
@@ -769,30 +809,72 @@ export default function RegisterScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  fullBgImage: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+  bgOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10, 15, 29, 0.65)",
+  },
+  webLeftOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(10, 15, 29, 0.7)",
+  },
   mobileSafe: { flex: 1 },
   mobileScroll: { flexGrow: 1 },
   mobileHero: {
-    paddingTop: 56,
-    paddingBottom: 32,
+    paddingTop: 40,
+    paddingBottom: 24,
     paddingHorizontal: Spacing.xl,
     alignItems: "center",
     position: "relative",
-    overflow: "hidden",
+  },
+  mobileLogoBadge: {
+    width: 68,
+    height: 68,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.sm,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  webLogoBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: Spacing.md,
+  },
+  tasselDot: {
+    position: "absolute",
+    bottom: 14,
+    left: 18,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#F59E0B",
   },
   mobileFormWrap: { flex: 1 },
   mobileEmoji: { fontSize: 52, marginBottom: 10, zIndex: 1 },
   mobileAppName: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "800",
     color: "#fff",
     marginBottom: 6,
-    zIndex: 1,
     letterSpacing: 0.3,
   },
   mobileTagline: {
     fontSize: 14,
     color: "rgba(255,255,255,0.78)",
-    zIndex: 1,
     textAlign: "center",
   },
   circle1: {
@@ -831,10 +913,13 @@ const styles = StyleSheet.create({
   webLeft: {
     width: 420,
     backgroundColor: Palette.primary,
-    padding: 48,
     justifyContent: "center",
     position: "relative",
     overflow: "hidden",
+  },
+  webLeftContent: {
+    padding: 48,
+    zIndex: 1,
   },
   webEmoji: { fontSize: 48, marginBottom: 10 },
   webAppName: {
@@ -885,6 +970,10 @@ const styles = StyleSheet.create({
     margin: Spacing.lg,
     borderRadius: Radii.xl,
     padding: Spacing.xl,
+    // Semi-transparent container color with alpha channel so the background image shows through clearly:
+    backgroundColor: "rgba(30, 41, 56, 0.75)", // RGBA color with alpha channel (e.g. rgba(30, 41, 56, 0.75) or rgba(15, 23, 42, 0.70))
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.14)",
     ...Shadows.lg,
   },
   formTitle: { fontWeight: "800", marginBottom: 6, letterSpacing: -0.3 },

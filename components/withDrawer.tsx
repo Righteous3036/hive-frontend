@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import {
   View, Animated, TouchableWithoutFeedback,
-  StyleSheet, Dimensions, SafeAreaView, Platform,
+  StyleSheet, Dimensions, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeContext';
 import { useResponsive } from './useResponsive';
 import DrawerContent from './DrawerContent';
@@ -76,7 +77,7 @@ export default function WithDrawer({
 
   // Mobile — sliding drawer with persistent bottom tab bar (hidden on Create screen)
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.bg }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safe, { backgroundColor: theme.bg }]}>
       <View style={[styles.mobileRoot, { backgroundColor: theme.bg }]}>
         <MobileHeader
           title={title}

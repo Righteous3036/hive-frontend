@@ -208,7 +208,7 @@ export default function NotificationsScreen({ navigation }: any) {
             </View>
           ) : filtered.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyEmoji}>🔔</Text>
+              <Ionicons name="notifications-off-outline" size={54} color={theme.subText} style={{ marginBottom: 12 }} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
                 No notifications
               </Text>

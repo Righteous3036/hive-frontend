@@ -1,6 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import * as ImagePicker from "expo-image-picker";
+import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
+  ImageBackground,
   ScrollView,
   StyleSheet,
   Switch,
@@ -9,19 +13,87 @@ import {
   View,
 } from "react-native";
 import { useTheme } from "../../components/ThemeContext";
+import { useUser } from "../../components/UserContext";
 import { useResponsive } from "../../components/useResponsive";
 import WithDrawer from "../../components/withDrawer";
 
+const PRESET_WALLPAPERS = [
+  {
+    id: "quad",
+    name: "Campus Quad",
+    uri: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1200&auto=format&fit=crop",
+  },
+  {
+    id: "midnight",
+    name: "Cosmic Sky",
+    uri: "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=1200&auto=format&fit=crop",
+  },
+  {
+    id: "warm",
+    name: "Golden Hour",
+    uri: "https://images.unsplash.com/photo-1518495973542-4542c06a5843?q=80&w=1200&auto=format&fit=crop",
+  },
+  {
+    id: "geometry",
+    name: "Cyber Flow",
+    uri: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=1200&auto=format&fit=crop",
+  },
+];
+
 export default function SettingsScreen({ navigation }: any) {
+  const { user } = useUser();
   const {
     isDarkMode,
     fontSize,
+    backgroundImage,
     toggleDarkMode,
     setFontSize,
+    setBackgroundImage,
+    removeBackgroundImage,
     theme,
     fontSizes,
   } = useTheme();
   const { padding } = useResponsive();
+  const [isPickingImage, setIsPickingImage] = useState(false);
+
+  const handlePickImage = async () => {
+    try {
+      setIsPickingImage(true);
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Please grant camera roll permissions to choose a custom background image."
+        );
+        setIsPickingImage(false);
+        return;
+      }
+
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (!res.canceled && res.assets && res.assets[0]) {
+        const asset = res.assets[0];
+        const imgUri = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+        await setBackgroundImage(imgUri);
+      }
+    } catch (err) {
+      console.error("Error picking wallpaper image:", err);
+      Alert.alert("Error", "Could not load the chosen image. Please try again.");
+    } finally {
+      setIsPickingImage(false);
+    }
+  };
+
+  const handleRemoveBackground = async () => {
+    await removeBackgroundImage();
+  };
 
   return (
     <WithDrawer
@@ -281,6 +353,453 @@ export default function SettingsScreen({ navigation }: any) {
             </View>
           </View>
 
+          {/* Theme & Wallpaper Customization Card */}
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.cardHeader}>
+              <View
+                style={[styles.cardIconBox, { backgroundColor: "#FF6B6B20" }]}
+              >
+                <Ionicons
+                  name="image-outline"
+                  size={20}
+                  color="#FF6B6B"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[
+                    styles.cardTitle,
+                    { color: theme.text, fontSize: fontSizes.lg },
+                  ]}
+                >
+                  Theme & Wallpaper
+                </Text>
+                <Text
+                  style={[
+                    styles.cardSub,
+                    { color: theme.subText, fontSize: fontSizes.xs },
+                  ]}
+                >
+                  App-wide background image customization
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: backgroundImage
+                      ? "rgba(16, 185, 129, 0.15)"
+                      : theme.inputBg,
+                    borderColor: backgroundImage
+                      ? "#10B981"
+                      : theme.border,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statusDot,
+                    { backgroundColor: backgroundImage ? "#10B981" : theme.subText },
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.statusBadgeText,
+                    {
+                      color: backgroundImage ? "#10B981" : theme.subText,
+                      fontSize: fontSizes.xs - 2,
+                    },
+                  ]}
+                >
+                  {backgroundImage ? "Active" : "Default"}
+                </Text>
+              </View>
+            </View>
+
+            {/* Current Active Preview Banner */}
+            {backgroundImage ? (
+              <View
+                style={[
+                  styles.activePreviewCard,
+                  { borderColor: theme.border },
+                ]}
+              >
+                <ImageBackground
+                  source={{ uri: backgroundImage }}
+                  style={styles.activePreviewImage}
+                  imageStyle={{ borderRadius: 12 }}
+                >
+                  <View style={styles.activePreviewOverlay}>
+                    <View style={styles.activePreviewInfo}>
+                      <Ionicons name="sparkles" size={15} color="#F59E0B" />
+                      <Text style={styles.activePreviewTitle}>
+                        Custom Background Applied
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.activePreviewClearBtn}
+                      onPress={handleRemoveBackground}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="trash-outline" size={13} color="#FFFFFF" />
+                      <Text style={styles.activePreviewClearText}>Remove</Text>
+                    </TouchableOpacity>
+                  </View>
+                </ImageBackground>
+              </View>
+            ) : (
+              <View
+                style={[
+                  styles.solidInfoBox,
+                  { backgroundColor: theme.inputBg, borderColor: theme.border },
+                ]}
+              >
+                <Ionicons
+                  name="color-filter-outline"
+                  size={18}
+                  color={theme.subText}
+                />
+                <Text
+                  style={[
+                    styles.solidInfoText,
+                    { color: theme.subText, fontSize: fontSizes.xs },
+                  ]}
+                >
+                  Default solid {isDarkMode ? "dark" : "light"} background is currently active across the app.
+                </Text>
+              </View>
+            )}
+
+            {/* Action Cards: None & Gallery Upload */}
+            <View style={styles.actionCardsRow}>
+              {/* Option 1: None (Default Theme) */}
+              <TouchableOpacity
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: theme.inputBg,
+                    borderColor: !backgroundImage ? "#845EF7" : theme.border,
+                    borderWidth: !backgroundImage ? 2 : 1,
+                  },
+                ]}
+                onPress={handleRemoveBackground}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={[
+                    styles.nonePreviewIconBox,
+                    { backgroundColor: isDarkMode ? "#0B0F19" : "#F8FAFC" },
+                  ]}
+                >
+                  <Ionicons
+                    name="ban-outline"
+                    size={22}
+                    color={!backgroundImage ? "#845EF7" : theme.subText}
+                  />
+                </View>
+                <View style={styles.actionCardLabelRow}>
+                  {!backgroundImage && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={14}
+                      color="#845EF7"
+                    />
+                  )}
+                  <Text
+                    style={[
+                      styles.actionCardTitle,
+                      {
+                        color: !backgroundImage ? "#845EF7" : theme.text,
+                        fontSize: fontSizes.xs + 1,
+                      },
+                    ]}
+                  >
+                    None
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.actionCardSub,
+                    { color: theme.subText, fontSize: fontSizes.xs - 2 },
+                  ]}
+                >
+                  Default solid theme
+                </Text>
+              </TouchableOpacity>
+
+              {/* Option 2: Upload From Device Gallery */}
+              <TouchableOpacity
+                style={[
+                  styles.actionCard,
+                  {
+                    backgroundColor: theme.inputBg,
+                    borderColor:
+                      backgroundImage &&
+                      !PRESET_WALLPAPERS.some((p) => p.uri === backgroundImage)
+                        ? "#10B981"
+                        : theme.border,
+                    borderWidth:
+                      backgroundImage &&
+                      !PRESET_WALLPAPERS.some((p) => p.uri === backgroundImage)
+                        ? 2
+                        : 1,
+                  },
+                ]}
+                onPress={handlePickImage}
+                disabled={isPickingImage}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={[
+                    styles.nonePreviewIconBox,
+                    { backgroundColor: "rgba(16, 185, 129, 0.12)" },
+                  ]}
+                >
+                  {isPickingImage ? (
+                    <ActivityIndicator size="small" color="#10B981" />
+                  ) : (
+                    <Ionicons
+                      name="images-outline"
+                      size={22}
+                      color="#10B981"
+                    />
+                  )}
+                </View>
+                <View style={styles.actionCardLabelRow}>
+                  {backgroundImage &&
+                    !PRESET_WALLPAPERS.some((p) => p.uri === backgroundImage) && (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={14}
+                        color="#10B981"
+                      />
+                    )}
+                  <Text
+                    style={[
+                      styles.actionCardTitle,
+                      {
+                        color:
+                          backgroundImage &&
+                          !PRESET_WALLPAPERS.some((p) => p.uri === backgroundImage)
+                            ? "#10B981"
+                            : theme.text,
+                        fontSize: fontSizes.xs + 1,
+                      },
+                    ]}
+                  >
+                    Device Gallery
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.actionCardSub,
+                    { color: theme.subText, fontSize: fontSizes.xs - 2 },
+                  ]}
+                >
+                  Pick from photos
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Curated Presets Header */}
+            <View style={styles.presetsHeader}>
+              <Text
+                style={[
+                  styles.presetsSectionTitle,
+                  { color: theme.text, fontSize: fontSizes.sm },
+                ]}
+              >
+                Curated Wallpapers
+              </Text>
+              <Text
+                style={[
+                  styles.presetsSectionSub,
+                  { color: theme.subText, fontSize: fontSizes.xs },
+                ]}
+              >
+                Tap to apply
+              </Text>
+            </View>
+
+            {/* Presets Horizontal Scroll */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.presetsScroll}
+            >
+              {PRESET_WALLPAPERS.map((preset) => {
+                const isSelected = backgroundImage === preset.uri;
+                return (
+                  <TouchableOpacity
+                    key={preset.id}
+                    style={[
+                      styles.presetCard,
+                      {
+                        borderColor: isSelected ? "#845EF7" : theme.border,
+                        borderWidth: isSelected ? 2 : 1,
+                      },
+                    ]}
+                    onPress={() => setBackgroundImage(preset.uri)}
+                    activeOpacity={0.8}
+                  >
+                    <ImageBackground
+                      source={{ uri: preset.uri }}
+                      style={styles.presetImage}
+                      imageStyle={{ borderRadius: 10 }}
+                    >
+                      <View style={styles.presetOverlay}>
+                        {isSelected && (
+                          <View style={styles.presetCheckBadge}>
+                            <Ionicons
+                              name="checkmark"
+                              size={12}
+                              color="#FFFFFF"
+                            />
+                          </View>
+                        )}
+                        <Text style={styles.presetName} numberOfLines={1}>
+                          {preset.name}
+                        </Text>
+                      </View>
+                    </ImageBackground>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Explicit Remove / Revert Button */}
+            {backgroundImage && (
+              <TouchableOpacity
+                style={[
+                  styles.removeFullBtn,
+                  {
+                    borderColor: "rgba(239, 68, 68, 0.35)",
+                    backgroundColor: "rgba(239, 68, 68, 0.08)",
+                  },
+                ]}
+                onPress={handleRemoveBackground}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                <Text style={styles.removeFullBtnText}>
+                  Remove Custom Background (Revert to Default)
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Admin Management Card */}
+          {user?.role === "admin" && (
+            <View
+              style={[
+                styles.card,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: (theme.accent || "#F5A623") + "40",
+                  borderWidth: 1.5,
+                },
+              ]}
+            >
+              <View style={styles.cardHeader}>
+                <View
+                  style={[
+                    styles.cardIconBox,
+                    { backgroundColor: (theme.accent || "#F5A623") + "20" },
+                  ]}
+                >
+                  <Ionicons
+                    name="shield-checkmark"
+                    size={20}
+                    color={theme.accent || "#F5A623"}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      styles.cardTitle,
+                      { color: theme.text, fontSize: fontSizes.lg },
+                    ]}
+                  >
+                    Administration
+                  </Text>
+                  <Text
+                    style={[
+                      styles.cardSub,
+                      { color: theme.subText, fontSize: fontSizes.xs },
+                    ]}
+                  >
+                    Campus moderation & user controls
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    backgroundColor: theme.accent || "#F5A623",
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 6,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#FFFFFF",
+                      fontSize: 10,
+                      fontWeight: "800",
+                    }}
+                  >
+                    ADMIN
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: (theme.accent || "#F5A623") + "15",
+                  padding: 14,
+                  borderRadius: 12,
+                  marginTop: 4,
+                }}
+                onPress={() => navigation.navigate("AdminDashboard")}
+                activeOpacity={0.8}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <Ionicons
+                    name="grid-outline"
+                    size={18}
+                    color={theme.accent || "#F5A623"}
+                  />
+                  <Text
+                    style={{
+                      color: theme.text,
+                      fontSize: fontSizes.sm,
+                      fontWeight: "700",
+                    }}
+                  >
+                    Open Admin Dashboard
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={theme.accent || "#F5A623"}
+                />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* About Card */}
           <View
             style={[
@@ -458,4 +977,174 @@ const styles = StyleSheet.create({
   },
   aboutLabel: {},
   aboutValue: { fontWeight: "600" },
+
+  // Theme & Wallpaper section styles
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusBadgeText: {
+    fontWeight: "700",
+  },
+  activePreviewCard: {
+    height: 110,
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  activePreviewImage: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  activePreviewOverlay: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  activePreviewInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  activePreviewTitle: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  activePreviewClearBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(239, 68, 68, 0.85)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  activePreviewClearText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  solidInfoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  solidInfoText: {
+    flex: 1,
+    lineHeight: 17,
+  },
+  actionCardsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+  },
+  actionCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  nonePreviewIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actionCardLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  actionCardTitle: {
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  actionCardSub: {
+    textAlign: "center",
+  },
+  presetsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  presetsSectionTitle: {
+    fontWeight: "700",
+  },
+  presetsSectionSub: {
+    fontWeight: "500",
+  },
+  presetsScroll: {
+    gap: 10,
+    paddingBottom: 6,
+  },
+  presetCard: {
+    width: 120,
+    height: 78,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  presetImage: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  presetOverlay: {
+    padding: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.52)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  presetCheckBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#845EF7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  presetName: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "700",
+    flex: 1,
+  },
+  removeFullBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 14,
+  },
+  removeFullBtnText: {
+    color: "#EF4444",
+    fontSize: 13,
+    fontWeight: "700",
+  },
 });

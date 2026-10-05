@@ -24,7 +24,7 @@ export default function MobileHeader({ title, onMenuPress, navigation, showBack 
       style={[
         styles.header,
         {
-          backgroundColor: isDarkMode ? theme.sidebarBg : '#FFFFFF',
+          backgroundColor: theme.sidebarBg,
           borderBottomColor: theme.border,
         },
         Shadows.sm,

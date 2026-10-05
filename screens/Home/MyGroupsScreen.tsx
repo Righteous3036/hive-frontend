@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  DeviceEventEmitter,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -9,22 +10,22 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  AppState,
+  AppStateStatus,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../../components/api";
 import { useTheme } from "../../components/ThemeContext";
 import { useResponsive } from "../../components/useResponsive";
 import WithDrawer from "../../components/withDrawer";
+import GroupCoverThumbnail, {
+  GroupCoverHeader,
+  GroupProfileThumbnail,
+} from "../../components/GroupCoverThumbnail";
+import { GROUP_UPDATED_EVENT } from "../../components/groupEvents";
+import { CATEGORY_VECTOR_ICONS, getCategoryVectorIcon } from "../../constants/categories";
 
-const CAT_ICONS: any = {
-  study: "📚",
-  sports: "⚽",
-  tech: "💻",
-  arts: "🎨",
-  dance: "💃",
-  business: "🚀",
-  health: "🏥",
-  social: "🌍",
-};
+const CAT_ICONS: any = CATEGORY_VECTOR_ICONS;
 
 const CAT_COLORS: any = {
   study: "#4C9BE8",
@@ -54,7 +55,40 @@ export default function MyGroupsScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchMyGroups();
-  }, []);
+
+    const sub = DeviceEventEmitter.addListener(GROUP_UPDATED_EVENT, (payload) => {
+      if (payload?.groupId) {
+        setGroups((prev) =>
+          prev.map((g) =>
+            g.id === payload.groupId ? { ...g, ...payload } : g
+          )
+        );
+      }
+    });
+
+    const unsubFocus = navigation.addListener("focus", () => {
+      fetchMyGroups(true);
+    });
+
+    // Auto-sync when app returns from background or window focuses on web
+    const appStateSub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") {
+        fetchMyGroups(true);
+      }
+    });
+
+    // Seamless real-time sync heartbeat between phone & laptop previews
+    const syncInterval = setInterval(() => {
+      fetchMyGroups(true);
+    }, 8000);
+
+    return () => {
+      sub.remove();
+      unsubFocus();
+      appStateSub.remove();
+      clearInterval(syncInterval);
+    };
+  }, [navigation]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -62,18 +96,20 @@ export default function MyGroupsScreen({ navigation }: any) {
     setRefreshing(false);
   };
 
-  const fetchMyGroups = async () => {
+  const fetchMyGroups = async (silent?: boolean | any) => {
+    const isSilent = silent === true;
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const res = await api.get("/users/my-groups");
       if (res.data.success) {
-        setGroups(res.data.groups);
-        fetchUnreadCounts(res.data.groups);
+        const list = res.data.groups || [];
+        setGroups(list);
+        fetchUnreadCounts(list);
       }
     } catch (err) {
       console.log("My groups error:", err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
@@ -90,7 +126,7 @@ export default function MyGroupsScreen({ navigation }: any) {
     setUnreadCounts(counts);
   };
 
-  const getIcon = (g: any) => CAT_ICONS[g.category] || "📌";
+  const getIcon = (g: any) => getCategoryVectorIcon(g.category);
   const getColor = (g: any) => g.color || CAT_COLORS[g.category] || "#4C9BE8";
 
   const filtered = groups.filter(
@@ -188,7 +224,12 @@ export default function MyGroupsScreen({ navigation }: any) {
             </View>
           ) : filtered.length === 0 ? (
             <View style={styles.center}>
-              <Text style={styles.emptyEmoji}>{search ? "🔍" : "👥"}</Text>
+              <Ionicons
+                name={search ? "search-outline" : "people-outline"}
+                size={54}
+                color={theme.subText}
+                style={{ marginBottom: 12 }}
+              />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
                 {search ? "No groups found" : "No groups yet"}
               </Text>
@@ -218,79 +259,84 @@ export default function MyGroupsScreen({ navigation }: any) {
                 onPress={() =>
                   navigation.navigate("GroupDetails", { groupId: group.id })
                 }
-                activeOpacity={0.8}
+                activeOpacity={0.85}
               >
-                <View
-                  style={[
-                    styles.cardAccent,
-                    { backgroundColor: getColor(group) },
-                  ]}
-                />
-
-                <View
-                  style={[
-                    styles.cardIconBox,
-                    { backgroundColor: getColor(group) + "20" },
-                  ]}
+                {/* 2. Cover Photo Background (Hero Card Style) */}
+                <GroupCoverHeader
+                  coverImage={group.cover_image}
+                  category={group.category}
+                  height={96}
+                  borderRadius={16}
                 >
-                  <Text style={styles.cardEmoji}>{getIcon(group)}</Text>
-                </View>
+                  <View style={styles.cardHeaderStrip}>
+                    <View style={styles.cardHeaderLeft}>
+                      {/* 1. Profile Picture Thumbnail in the small section */}
+                      <GroupProfileThumbnail
+                        profileImage={group.profile_image}
+                        category={group.category}
+                        fallbackIcon={getIcon(group)}
+                        color={getColor(group)}
+                        size={38}
+                        borderRadius={10}
+                      />
+                      <View style={styles.roleBadgeGlass}>
+                        <Text style={styles.roleTextGlass}>{group.my_role}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.headerRightRow}>
+                      {group.status === "pending" && (
+                        <View style={styles.pendingBadgeGlass}>
+                          <Ionicons
+                            name="time-outline"
+                            size={11}
+                            color="#FFB347"
+                          />
+                          <Text style={styles.pendingBadgeGlassText}>Pending</Text>
+                        </View>
+                      )}
+                      {unreadCounts[group.id] > 0 && (
+                        <View style={styles.unreadBadge}>
+                          <Text style={styles.unreadBadgeText}>
+                            {unreadCounts[group.id] > 99
+                              ? "99+"
+                              : unreadCounts[group.id]}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.chevronGlass}>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={15}
+                          color="#FFFFFF"
+                        />
+                      </View>
+                    </View>
+                  </View>
+                </GroupCoverHeader>
 
                 <View style={styles.cardInfo}>
                   <View style={styles.cardTopRow}>
                     <Text
                       style={[
                         styles.cardName,
-                        { color: theme.text, fontSize: fontSizes.md },
+                        { color: theme.text, fontSize: fontSizes.md + 1 },
                       ]}
                       numberOfLines={1}
                     >
                       {group.name}
                     </Text>
-                    <View style={styles.badgeRow}>
-                      {group.status === "pending" && (
-                        <View style={styles.pendingBadge}>
-                          <Ionicons
-                            name="time-outline"
-                            size={11}
-                            color="#FFB347"
-                          />
-                          <Text style={styles.pendingBadgeText}>Pending</Text>
-                        </View>
-                      )}
-                      <View
-                        style={[
-                          styles.roleBadge,
-                          {
-                            backgroundColor:
-                              (ROLE_COLORS[group.my_role] || "#888") + "20",
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.roleText,
-                            {
-                              color: ROLE_COLORS[group.my_role] || "#888",
-                              fontSize: fontSizes.xs,
-                            },
-                          ]}
-                        >
-                          {group.my_role}
-                        </Text>
-                      </View>
-                    </View>
                   </View>
                   <Text
                     style={[
                       styles.cardDesc,
-                      { color: theme.subText, fontSize: fontSizes.xs },
+                      { color: theme.subText, fontSize: fontSizes.xs + 1 },
                     ]}
-                    numberOfLines={1}
+                    numberOfLines={2}
                   >
-                    {group.description}
+                    {group.description || "No description provided."}
                   </Text>
-                  {group.meeting_time && (
+                  {group.meeting_time ? (
                     <View style={styles.metaRow}>
                       <Ionicons
                         name="time-outline"
@@ -306,25 +352,7 @@ export default function MyGroupsScreen({ navigation }: any) {
                         {group.meeting_time}
                       </Text>
                     </View>
-                  )}
-                </View>
-
-                <View style={styles.cardRight}>
-                  {unreadCounts[group.id] > 0 && (
-                    <View style={styles.unreadBadge}>
-                      <Text style={styles.unreadBadgeText}>
-                        {unreadCounts[group.id] > 99
-                          ? "99+"
-                          : unreadCounts[group.id]}
-                      </Text>
-                    </View>
-                  )}
-                  <Ionicons
-                    name="chevron-forward"
-                    size={18}
-                    color={theme.subText}
-                    style={styles.chevron}
-                  />
+                  ) : null}
                 </View>
               </TouchableOpacity>
             ))
@@ -338,9 +366,12 @@ export default function MyGroupsScreen({ navigation }: any) {
             onPress={() => navigation.navigate("Home")}
           >
             <View>
-              <Text style={styles.discoverTitle}>
-                🔍 Looking for more groups?
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Ionicons name="search" size={15} color="#fff" />
+                <Text style={styles.discoverTitle}>
+                  Looking for more groups?
+                </Text>
+              </View>
               <Text style={styles.discoverDesc}>
                 Browse hundreds of campus groups
               </Text>
@@ -404,17 +435,67 @@ const styles = StyleSheet.create({
   },
   browseBtnText: { color: "#fff", fontSize: 14, fontWeight: "600" },
   card: {
-    borderRadius: 14,
-    flexDirection: "row",
-    alignItems: "center",
+    borderRadius: 16,
+    flexDirection: "column",
     borderWidth: 1,
     overflow: "hidden",
-    elevation: 2,
+    elevation: 3,
+    marginBottom: 12,
   },
-  cardAccent: { width: 4, alignSelf: "stretch" },
-  cardIconBox: {
-    width: 68,
-    alignSelf: "stretch",
+  cardHeaderStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  cardHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  roleBadgeGlass: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: "rgba(0, 0, 0, 0.52)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.25)",
+  },
+  roleTextGlass: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "capitalize",
+  },
+  headerRightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  pendingBadgeGlass: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "#FFB347",
+  },
+  pendingBadgeGlassText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FFB347",
+  },
+  chevronGlass: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(0, 0, 0, 0.50)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.20)",
     alignItems: "center",
     justifyContent: "center",
   },
