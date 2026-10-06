@@ -21,6 +21,7 @@ import GroupCoverThumbnail, {
   GroupProfileThumbnail,
 } from "../../components/GroupCoverThumbnail";
 import { GROUP_UPDATED_EVENT } from "../../components/groupEvents";
+import { setCachedGroups } from "../../components/groupCache";
 import { CATEGORY_VECTOR_ICONS, getCategoryVectorIcon } from "../../constants/categories";
 
 const CAT_ICONS: any = CATEGORY_VECTOR_ICONS;
@@ -58,7 +59,7 @@ export default function SavedScreen({ navigation }: any) {
     });
 
     const unsubFocus = navigation.addListener("focus", () => {
-      fetchSaved();
+      fetchSaved(true);
     });
 
     return () => {
@@ -73,18 +74,20 @@ export default function SavedScreen({ navigation }: any) {
     setRefreshing(false);
   };
 
-  const fetchSaved = async () => {
+  const fetchSaved = async (silent?: boolean | any) => {
+    const isSilent = silent === true || groups.length > 0;
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const res = await api.get("/users/saved");
       if (res.data.success) {
         const list = res.data.groups || [];
         setGroups(list);
+        setCachedGroups(list);
       }
     } catch (err) {
       console.log("Saved error:", err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
@@ -219,7 +222,11 @@ export default function SavedScreen({ navigation }: any) {
                   { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
                 onPress={() =>
-                  navigation.navigate("GroupDetails", { groupId: group.id })
+                  navigation.navigate("GroupDetails", {
+                    groupId: group.id,
+                    initialGroup: group,
+                    initialIsMember: group.is_member ?? false,
+                  })
                 }
                 activeOpacity={0.85}
               >

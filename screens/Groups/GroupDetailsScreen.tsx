@@ -25,6 +25,7 @@ import { useResponsive } from "../../components/useResponsive";
 import WithDrawer from "../../components/withDrawer";
 import { emitGroupUpdated } from "../../components/groupEvents";
 import { CATEGORY_3D_ICONS, getCategory3DIcon, getCategoryVectorIcon } from "../../constants/categories";
+import { getCachedGroup, setCachedGroup } from "../../components/groupCache";
 
 const CATEGORIES = [
   { id: "study", label: "Study", image: CATEGORY_3D_ICONS.study },
@@ -60,19 +61,37 @@ const CAT_COLORS: any = {
 const CAT_ICONS: any = CATEGORY_3D_ICONS;
 
 export default function GroupDetailsScreen({ navigation, route }: any) {
-  const { groupId } = route?.params || {};
+  const { groupId, initialGroup, initialIsMember, initialIsPending } =
+    route?.params || {};
+  const cachedGroup = initialGroup || getCachedGroup(groupId);
+
   const { theme, fontSizes } = useTheme();
   const { user } = useUser();
   const { isMobile, padding } = useResponsive();
 
-  const [group, setGroup] = useState<any>(null);
+  const [group, setGroup] = useState<any>(cachedGroup || null);
   const [members, setMembers] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isMember, setIsMember] = useState(false);
-  const [isPending, setIsPending] = useState(false);
-  const [isCreator, setIsCreator] = useState(false);
-  const [isGroupAdmin, setIsGroupAdmin] = useState(false);
+  const [loading, setLoading] = useState(!cachedGroup);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
+  const [isMember, setIsMember] = useState(
+    initialIsMember !== undefined
+      ? Boolean(initialIsMember)
+      : Boolean(cachedGroup?.is_member)
+  );
+  const [isPending, setIsPending] = useState(
+    initialIsPending !== undefined ? Boolean(initialIsPending) : false
+  );
+  const [isCreator, setIsCreator] = useState(
+    Boolean(user?.id && cachedGroup?.created_by === user.id)
+  );
+  const [isGroupAdmin, setIsGroupAdmin] = useState(
+    Boolean(
+      (user?.id && cachedGroup?.created_by === user.id) ||
+        user?.role === "admin"
+    )
+  );
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [activeTab, setActiveTab] = useState("about");
@@ -80,7 +99,9 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [memberCount, setMemberCount] = useState(0);
+  const [memberCount, setMemberCount] = useState(
+    parseInt(cachedGroup?.member_count) || 0
+  );
   const [messages, setMessages] = useState<any[]>([]);
   const [messageText, setMessageText] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -110,12 +131,19 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
 
   useEffect(() => {
     if (groupId) {
+      if (!group) {
+        const found = getCachedGroup(groupId);
+        if (found) {
+          setGroup(found);
+          setMemberCount(parseInt(found.member_count) || 0);
+          setLoading(false);
+        }
+      }
       fetchAll();
     } else {
       setLoading(false);
     }
   }, [groupId]);
-
 
   useEffect(() => {
     if (isMember || isCreator) {
@@ -138,61 +166,105 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
 
   const fetchAll = async () => {
     try {
-      setLoading(true);
-
-      // Fetch each resource independently so one failure doesn't block the rest
-      const [groupRes, membersRes, announcementsRes, membershipRes] =
-        await Promise.all([
-          api.get(`/groups/${groupId}`).catch((err) => {
-            console.log("Fetch group error:", err);
-            return null;
-          }),
-          api.get(`/groups/${groupId}/members`).catch((err) => {
-            console.log("Fetch members error:", err);
-            return null;
-          }),
-          api.get(`/groups/${groupId}/announcements`).catch((err) => {
-            console.log("Fetch announcements error:", err);
-            return null;
-          }),
-          api.get(`/groups/${groupId}/membership`).catch((err) => {
-            console.log("Fetch membership error:", err);
-            return null;
-          }),
-        ]);
-
-      if (groupRes?.data?.success) {
-        const groupData = groupRes.data.group;
-        setGroup(groupData);
-        setMemberCount(parseInt(groupData.member_count) || 0);
+      // Only show full-screen spinner if we have NO group data at all
+      if (!group && !cachedGroup && !getCachedGroup(groupId)) {
+        setLoading(true);
       }
-      if (membersRes?.data?.success) setMembers(membersRes.data.members);
-      if (announcementsRes?.data?.success)
-        setAnnouncements(announcementsRes.data.announcements);
-      if (membershipRes?.data?.success) {
-        setIsMember(membershipRes.data.isMember);
-        setIsPending(membershipRes.data.isPending);
-        const isAdmin =
-          membershipRes.data.role === "admin" ||
-          groupRes?.data?.group?.created_by === user?.id ||
-          user?.role === "admin";
-        setIsCreator(
-          membershipRes.data.role === "admin" &&
-            groupRes?.data?.group?.created_by === user?.id,
-        );
-        setIsGroupAdmin(Boolean(isAdmin));
-      }
+      setLoadingMembers(true);
+      setLoadingAnnouncements(true);
 
-      if (membershipRes?.data?.role === "admin") {
-        try {
-          const reqRes = await api.get(`/groups/${groupId}/join-requests`);
-          if (reqRes.data.success) setJoinRequests(reqRes.data.requests);
-        } catch {}
-      }
+      // Fetch each resource concurrently without waiting for slowest one
+      const groupPromise = api
+        .get(`/groups/${groupId}`)
+        .then((groupRes) => {
+          if (groupRes?.data?.success && groupRes.data.group) {
+            const groupData = groupRes.data.group;
+            setGroup(groupData);
+            setCachedGroup(groupData);
+            setMemberCount(parseInt(groupData.member_count) || 0);
+            if (user?.id && groupData.created_by === user.id) {
+              setIsCreator(true);
+              setIsGroupAdmin(true);
+            }
+          }
+        })
+        .catch((err) => {
+          console.log("Fetch group error:", err);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+
+      const membershipPromise = api
+        .get(`/groups/${groupId}/membership`)
+        .then((membershipRes) => {
+          if (membershipRes?.data?.success) {
+            setIsMember(Boolean(membershipRes.data.isMember));
+            setIsPending(Boolean(membershipRes.data.isPending));
+            const isAdmin =
+              membershipRes.data.role === "admin" ||
+              user?.role === "admin" ||
+              (group && group.created_by === user?.id);
+            if (isAdmin) setIsGroupAdmin(true);
+            setIsCreator(
+              membershipRes.data.role === "admin" &&
+                (group?.created_by === user?.id || cachedGroup?.created_by === user?.id)
+            );
+            if (membershipRes.data.role === "admin" && user?.id) {
+              api
+                .get(`/groups/${groupId}/join-requests`)
+                .then((reqRes) => {
+                  if (reqRes.data?.success)
+                    setJoinRequests(reqRes.data.requests || []);
+                })
+                .catch(() => {});
+            }
+          }
+        })
+        .catch((err) => {
+          console.log("Fetch membership error:", err);
+        });
+
+      const membersPromise = api
+        .get(`/groups/${groupId}/members`)
+        .then((membersRes) => {
+          if (membersRes?.data?.success) {
+            setMembers(membersRes.data.members || []);
+          }
+        })
+        .catch((err) => {
+          console.log("Fetch members error:", err);
+        })
+        .finally(() => {
+          setLoadingMembers(false);
+        });
+
+      const announcementsPromise = api
+        .get(`/groups/${groupId}/announcements`)
+        .then((announcementsRes) => {
+          if (announcementsRes?.data?.success) {
+            setAnnouncements(announcementsRes.data.announcements || []);
+          }
+        })
+        .catch((err) => {
+          console.log("Fetch announcements error:", err);
+        })
+        .finally(() => {
+          setLoadingAnnouncements(false);
+        });
+
+      await Promise.allSettled([
+        groupPromise,
+        membershipPromise,
+        membersPromise,
+        announcementsPromise,
+      ]);
     } catch (err) {
       console.log("Group details error:", err);
     } finally {
       setLoading(false);
+      setLoadingMembers(false);
+      setLoadingAnnouncements(false);
     }
   };
 
@@ -1217,7 +1289,20 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
                       Members ({memberCount})
                     </Text>
                   </View>
-                  {members.length === 0 ? (
+                  {loadingMembers && members.length === 0 ? (
+                    <View style={styles.miniCenter}>
+                      <ActivityIndicator
+                        size="small"
+                        color="#00467F"
+                        style={{ marginBottom: 8 }}
+                      />
+                      <Text
+                        style={[styles.centerText, { color: theme.subText }]}
+                      >
+                        Loading members...
+                      </Text>
+                    </View>
+                  ) : members.length === 0 ? (
                     <View style={styles.miniCenter}>
                       <Text
                         style={[styles.centerText, { color: theme.subText }]}
@@ -1326,7 +1411,18 @@ export default function GroupDetailsScreen({ navigation, route }: any) {
             {/* ── ANNOUNCEMENTS TAB ── */}
             {activeTab === "announcements" && (
               <View style={styles.section}>
-                {announcements.length === 0 ? (
+                {loadingAnnouncements && announcements.length === 0 ? (
+                  <View style={styles.center}>
+                    <ActivityIndicator
+                      size="small"
+                      color="#00467F"
+                      style={{ marginBottom: 12 }}
+                    />
+                    <Text style={[styles.centerText, { color: theme.subText }]}>
+                      Loading announcements...
+                    </Text>
+                  </View>
+                ) : announcements.length === 0 ? (
                   <View style={styles.center}>
                     <Ionicons name="megaphone-outline" size={48} color={theme.subText} style={{ marginBottom: 12 }} />
                     <Text style={[styles.emptyTitle, { color: theme.text }]}>

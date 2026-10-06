@@ -23,6 +23,7 @@ import GroupCoverThumbnail, {
   GroupProfileThumbnail,
 } from "../../components/GroupCoverThumbnail";
 import { GROUP_UPDATED_EVENT } from "../../components/groupEvents";
+import { getCachedMyGroups, setCachedMyGroups } from "../../components/groupCache";
 import { CATEGORY_VECTOR_ICONS, getCategoryVectorIcon } from "../../constants/categories";
 
 const CAT_ICONS: any = CATEGORY_VECTOR_ICONS;
@@ -47,14 +48,15 @@ const ROLE_COLORS: any = {
 export default function MyGroupsScreen({ navigation }: any) {
   const { theme, fontSizes } = useTheme();
   const { isMobile, padding } = useResponsive();
+  const cachedMy = getCachedMyGroups() || [];
   const [search, setSearch] = useState("");
-  const [groups, setGroups] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [groups, setGroups] = useState<any[]>(cachedMy);
+  const [loading, setLoading] = useState(cachedMy.length === 0);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
 
   useEffect(() => {
-    fetchMyGroups();
+    fetchMyGroups(cachedMy.length > 0);
 
     const sub = DeviceEventEmitter.addListener(GROUP_UPDATED_EVENT, (payload) => {
       if (payload?.groupId) {
@@ -80,7 +82,7 @@ export default function MyGroupsScreen({ navigation }: any) {
     // Seamless real-time sync heartbeat between phone & laptop previews
     const syncInterval = setInterval(() => {
       fetchMyGroups(true);
-    }, 8000);
+    }, 15000);
 
     return () => {
       sub.remove();
@@ -97,13 +99,14 @@ export default function MyGroupsScreen({ navigation }: any) {
   };
 
   const fetchMyGroups = async (silent?: boolean | any) => {
-    const isSilent = silent === true;
+    const isSilent = silent === true || groups.length > 0;
     try {
       if (!isSilent) setLoading(true);
       const res = await api.get("/users/my-groups");
       if (res.data.success) {
         const list = res.data.groups || [];
         setGroups(list);
+        setCachedMyGroups(list);
         fetchUnreadCounts(list);
       }
     } catch (err) {
@@ -257,7 +260,11 @@ export default function MyGroupsScreen({ navigation }: any) {
                   { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
                 onPress={() =>
-                  navigation.navigate("GroupDetails", { groupId: group.id })
+                  navigation.navigate("GroupDetails", {
+                    groupId: group.id,
+                    initialGroup: group,
+                    initialIsMember: true,
+                  })
                 }
                 activeOpacity={0.85}
               >

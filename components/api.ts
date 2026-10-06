@@ -1,7 +1,33 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 
-const API_URL = "https://hive-backend-5y59.onrender.com/api";
+export const getApiBaseUrl = (): string => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+
+  if (Platform.OS === "web") {
+    return "http://localhost:5000/api";
+  }
+
+  // On mobile devices running Expo, hostUri points to your computer's IP
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
+  if (hostUri) {
+    const host = hostUri.split(":")[0];
+    if (host) {
+      return `http://${host}:5000/api`;
+    }
+  }
+
+  return "http://192.168.100.180:5000/api";
+};
+
+const API_URL = getApiBaseUrl();
+console.log("[Hive API] Connected to:", API_URL);
 
 // Store token in module scope — persists across navigation
 let userToken: string | null = null;

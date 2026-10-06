@@ -10,7 +10,11 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "target": "ES2020",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
     "lib": ["dom", "esnext"],
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
     }

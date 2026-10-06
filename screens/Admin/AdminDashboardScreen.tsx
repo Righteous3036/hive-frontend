@@ -833,6 +833,7 @@ export default function AdminDashboardScreen({ navigation }: any) {
                           onPress={() =>
                             navigation.navigate("GroupDetails", {
                               groupId: g.id,
+                              initialGroup: g,
                             })
                           }
                         >

@@ -14,6 +14,7 @@ import { useNotifications } from "../../components/NotificationContext";
 import { useTheme } from "../../components/ThemeContext";
 import { useResponsive } from "../../components/useResponsive";
 import WithDrawer from "../../components/withDrawer";
+import { getCachedGroup } from "../../components/groupCache";
 
 const TYPE_CONFIG: any = {
   join_approved: { icon: "checkmark-circle", color: "#51CF66" },
@@ -293,6 +294,7 @@ export default function NotificationsScreen({ navigation }: any) {
                         onPress={() =>
                           navigation.navigate("GroupDetails", {
                             groupId: notif.group_id,
+                            initialGroup: getCachedGroup(notif.group_id),
                           })
                         }
                       >

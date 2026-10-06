@@ -31,6 +31,14 @@ import GroupCoverThumbnail, {
   GroupProfileThumbnail,
 } from "../../components/GroupCoverThumbnail";
 import { GROUP_UPDATED_EVENT } from "../../components/groupEvents";
+import {
+  getCachedAllGroups,
+  setCachedAllGroups,
+  getCachedMyGroupIds,
+  getCachedSavedGroupIds,
+  setCachedMyGroups,
+  setCachedSavedGroupIds,
+} from "../../components/groupCache";
 import { useNotifications } from "../../components/NotificationContext";
 import Sidebar from "../../components/Sidebar";
 import { useTheme } from "../../components/ThemeContext";
@@ -525,14 +533,18 @@ export default function HomeScreen({ navigation }: any) {
   const { unreadCount, refreshUnread } = useNotifications();
   const { user, getInitials } = useUser();
 
+  const initialCachedGroups = getCachedAllGroups() || [];
+  const initialCachedJoined = getCachedMyGroupIds() || [];
+  const initialCachedSaved = getCachedSavedGroupIds() || [];
+
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
-  const [groups, setGroups] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [groups, setGroups] = useState<any[]>(initialCachedGroups);
+  const [loading, setLoading] = useState(initialCachedGroups.length === 0);
   const [refreshing, setRefreshing] = useState(false);
-  const [joinedGroups, setJoinedGroups] = useState<number[]>([]);
+  const [joinedGroups, setJoinedGroups] = useState<number[]>(initialCachedJoined);
   const [pendingGroups, setPendingGroups] = useState<number[]>([]);
-  const [savedGroups, setSavedGroups] = useState<number[]>([]);
+  const [savedGroups, setSavedGroups] = useState<number[]>(initialCachedSaved);
   const [joiningId, setJoiningId] = useState<number | null>(null);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [error, setError] = useState("");
@@ -592,7 +604,7 @@ export default function HomeScreen({ navigation }: any) {
       }
     }).catch(() => {});
 
-    fetchGroups();
+    fetchGroups(initialCachedGroups.length > 0);
     fetchSavedGroups();
     fetchOnlineMembers();
     refreshUnread();
@@ -628,8 +640,10 @@ export default function HomeScreen({ navigation }: any) {
     const syncInterval = setInterval(() => {
       fetchGroups(true);
       fetchSavedGroups();
-      fetchOnlineMembers();
-    }, 8000);
+      if (onlineMembers.length === 0) {
+        fetchOnlineMembers();
+      }
+    }, 15000);
 
     return () => {
       sub.remove();
@@ -732,7 +746,7 @@ export default function HomeScreen({ navigation }: any) {
   };
 
   const fetchGroups = async (silent?: boolean | any) => {
-    const isSilent = silent === true;
+    const isSilent = silent === true || groups.length > 0;
     try {
       if (!isSilent) {
         setLoading(true);
@@ -742,9 +756,11 @@ export default function HomeScreen({ navigation }: any) {
       if (res.data.success) {
         const list = res.data.groups || [];
         setGroups(list);
+        setCachedAllGroups(list);
         checkMemberships(list);
       }
-    } catch {
+    } catch (err: any) {
+      console.warn("[HomeScreen] fetchGroups error:", err?.message || err);
       if (!isSilent) {
         setError("Failed to load groups. Please check your connection.");
       }
@@ -759,25 +775,66 @@ export default function HomeScreen({ navigation }: any) {
     try {
       const res = await api.get("/users/saved");
       if (res.data.success) {
-        setSavedGroups(res.data.groups.map((g: any) => g.id));
+        const ids = res.data.groups.map((g: any) => g.id);
+        setSavedGroups(ids);
+        setCachedSavedGroupIds(ids);
       }
     } catch (err) { }
   };
 
   const checkMemberships = async (list: any[]) => {
+    try {
+      // 1 single API call to get all joined groups instead of 23 parallel requests!
+      const myRes = await api.get("/users/my-groups");
+      if (myRes.data?.success && Array.isArray(myRes.data.groups)) {
+        setCachedMyGroups(myRes.data.groups);
+        const joined = myRes.data.groups.map((g: any) => g.id);
+        setJoinedGroups(joined);
+
+        // For pending groups, only check groups that require approval and aren't already joined
+        const approvalGroups = list.filter(
+          (g) => g.require_approval && !joined.includes(g.id)
+        );
+        if (approvalGroups.length > 0) {
+          const pending: number[] = [];
+          await Promise.all(
+            approvalGroups.map(async (g) => {
+              try {
+                const res = await api.get(`/groups/${g.id}/membership`);
+                if (res.data?.success && res.data.isPending) {
+                  pending.push(g.id);
+                }
+              } catch {}
+            })
+          );
+          setPendingGroups(pending);
+        } else {
+          setPendingGroups([]);
+        }
+        return;
+      }
+    } catch {}
+
+    // Fallback: chunked check
     const joined: number[] = [];
     const pending: number[] = [];
-    await Promise.all(
-      list.map(async (g) => {
-        try {
-          const res = await api.get(`/groups/${g.id}/membership`);
-          if (res.data.success) {
-            if (res.data.isMember) joined.push(g.id);
-            if (res.data.isPending) pending.push(g.id);
-          }
-        } catch { }
-      })
-    );
+    const chunks = [];
+    for (let i = 0; i < list.length; i += 5) {
+      chunks.push(list.slice(i, i + 5));
+    }
+    for (const chunk of chunks) {
+      await Promise.all(
+        chunk.map(async (g) => {
+          try {
+            const res = await api.get(`/groups/${g.id}/membership`);
+            if (res.data.success) {
+              if (res.data.isMember) joined.push(g.id);
+              if (res.data.isPending) pending.push(g.id);
+            }
+          } catch {}
+        })
+      );
+    }
     setJoinedGroups(joined);
     setPendingGroups(pending);
   };
@@ -1232,6 +1289,9 @@ export default function HomeScreen({ navigation }: any) {
                   onPress={() =>
                     navigation.navigate("GroupDetails", {
                       groupId: group.id,
+                      initialGroup: group,
+                      initialIsMember: joinedGroups.includes(group.id),
+                      initialIsPending: pendingGroups.includes(group.id),
                     })
                   }
                   onToggleSave={() => toggleSave(group.id)}
