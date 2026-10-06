@@ -29,7 +29,7 @@ export const getApiBaseUrl = (): string => {
 const API_URL = getApiBaseUrl();
 console.log("[Hive API] Connected to:", API_URL);
 
-// Store token in module scope — persists across navigation
+// Store token in module scope ? persists across navigation
 let userToken: string | null = null;
 
 export const setToken = (token: string) => {
@@ -50,6 +50,7 @@ export const getToken = () => userToken;
 export const loadToken = async () => {
   try {
     userToken = await AsyncStorage.getItem("auth_token");
+    console.log("[Hive API] Token loaded:", userToken ? "YES" : "NO");
   } catch {
     userToken = null;
   }

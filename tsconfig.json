@@ -14,6 +14,7 @@
     "moduleResolution": "bundler",
     "moduleDetection": "force",
     "lib": ["dom", "esnext"],
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
