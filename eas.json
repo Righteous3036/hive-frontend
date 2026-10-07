@@ -1,17 +1,20 @@
 {
   "cli": {
-    "version": ">= 5.0.0"
+    "version": ">= 5.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "preview": {
       "android": {
         "buildType": "apk"
-      }
+      },
+      "installCommand": "npm install --legacy-peer-deps"
     },
     "production": {
       "android": {
         "buildType": "apk"
-      }
+      },
+      "installCommand": "npm install --legacy-peer-deps"
     }
   }
 }

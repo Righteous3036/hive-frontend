@@ -10,8 +10,7 @@
   "android": "expo start --android",
   "ios": "expo start --ios",
   "web": "expo start --web",
-  "mobile": "expo start --clear",
-  "eas-build-pre-install": "npm install --legacy-peer-deps"
+  "mobile": "expo start --clear"
 },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.15",
