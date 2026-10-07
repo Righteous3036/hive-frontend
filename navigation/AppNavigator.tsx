@@ -16,6 +16,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NotificationProvider } from "../components/NotificationContext";
+import { SidebarProvider } from "../components/SidebarContext";
 import { ThemeProvider } from "../components/ThemeContext";
 import { getStoredUser, User, UserProvider } from "../components/UserContext";
 import api, { clearToken, getToken, loadToken } from "../components/api";
@@ -345,62 +346,64 @@ export default function AppNavigator() {
     <SafeAreaProvider>
       <UserProvider initialUser={restoredUser}>
         <ThemeProvider>
-          <NotificationProvider>
-            <AppBackgroundWrapper>
-              <NavigationContainer theme={transparentNavTheme}>
-                <Stack.Navigator
-                  initialRouteName={initialRoute}
-                  screenOptions={{
-                    headerShown: false,
-                    animationEnabled: true,
-                    cardStyle: { flex: 1, backgroundColor: "transparent" },
-                    cardShadowEnabled: false,
-                    cardOverlayEnabled: false,
-                    transitionSpec: fluidTransitionSpec,
-                    cardStyleInterpolator: forFluidFadeSlide,
-                    gestureEnabled: Platform.OS === "ios",
-                    gestureDirection: "horizontal",
-                  }}
-                >
-                  <Stack.Screen name="Welcome" component={WelcomeScreen} />
-                  <Stack.Screen name="Login" component={LoginScreen} />
-                  <Stack.Screen name="Register" component={RegisterScreen} />
-                  <Stack.Screen name="AIMatching" component={AIMatchingScreen} />
-                  <Stack.Screen
-                    name="ForgotPassword"
-                    component={ForgotPasswordScreen}
-                  />
-                  <Stack.Screen name="Home" component={HomeScreen} />
-                  <Stack.Screen
-                    name="GroupDetails"
-                    component={GroupDetailsScreen}
-                  />
-                  <Stack.Screen
-                    name="CreateGroup"
-                    component={CreateGroupScreen}
-                    options={{
-                      cardStyleInterpolator:
-                        CardStyleInterpolators.forVerticalIOS,
-                      gestureDirection: "vertical",
+          <SidebarProvider>
+            <NotificationProvider>
+              <AppBackgroundWrapper>
+                <NavigationContainer theme={transparentNavTheme}>
+                  <Stack.Navigator
+                    initialRouteName={initialRoute}
+                    screenOptions={{
+                      headerShown: false,
+                      animationEnabled: true,
+                      cardStyle: { flex: 1, backgroundColor: "transparent" },
+                      cardShadowEnabled: false,
+                      cardOverlayEnabled: false,
+                      transitionSpec: fluidTransitionSpec,
+                      cardStyleInterpolator: forFluidFadeSlide,
+                      gestureEnabled: Platform.OS === "ios",
+                      gestureDirection: "horizontal",
                     }}
-                  />
-                  <Stack.Screen name="GroupChat" component={GroupChatScreen} />
-                  <Stack.Screen name="MyGroups" component={MyGroupsScreen} />
-                  <Stack.Screen
-                    name="Notifications"
-                    component={NotificationsScreen}
-                  />
-                  <Stack.Screen name="Profile" component={ProfileScreen} />
-                  <Stack.Screen
-                    name="AdminDashboard"
-                    component={AdminDashboardScreen}
-                  />
-                  <Stack.Screen name="Saved" component={SavedScreen} />
-                  <Stack.Screen name="Settings" component={SettingsScreen} />
-                </Stack.Navigator>
-              </NavigationContainer>
-            </AppBackgroundWrapper>
-          </NotificationProvider>
+                  >
+                    <Stack.Screen name="Welcome" component={WelcomeScreen} />
+                    <Stack.Screen name="Login" component={LoginScreen} />
+                    <Stack.Screen name="Register" component={RegisterScreen} />
+                    <Stack.Screen name="AIMatching" component={AIMatchingScreen} />
+                    <Stack.Screen
+                      name="ForgotPassword"
+                      component={ForgotPasswordScreen}
+                    />
+                    <Stack.Screen name="Home" component={HomeScreen} />
+                    <Stack.Screen
+                      name="GroupDetails"
+                      component={GroupDetailsScreen}
+                    />
+                    <Stack.Screen
+                      name="CreateGroup"
+                      component={CreateGroupScreen}
+                      options={{
+                        cardStyleInterpolator:
+                          CardStyleInterpolators.forVerticalIOS,
+                        gestureDirection: "vertical",
+                      }}
+                    />
+                    <Stack.Screen name="GroupChat" component={GroupChatScreen} />
+                    <Stack.Screen name="MyGroups" component={MyGroupsScreen} />
+                    <Stack.Screen
+                      name="Notifications"
+                      component={NotificationsScreen}
+                    />
+                    <Stack.Screen name="Profile" component={ProfileScreen} />
+                    <Stack.Screen
+                      name="AdminDashboard"
+                      component={AdminDashboardScreen}
+                    />
+                    <Stack.Screen name="Saved" component={SavedScreen} />
+                    <Stack.Screen name="Settings" component={SettingsScreen} />
+                  </Stack.Navigator>
+                </NavigationContainer>
+              </AppBackgroundWrapper>
+            </NotificationProvider>
+          </SidebarProvider>
         </ThemeProvider>
       </UserProvider>
     </SafeAreaProvider>

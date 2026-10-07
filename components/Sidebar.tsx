@@ -14,6 +14,7 @@ import { useTheme } from "./ThemeContext";
 import { useUser } from "./UserContext";
 import { Palette, Shadows, Spacing, Radii, Layout } from "../constants/theme";
 import FloatingBee from "./ui/FloatingBee";
+import { useSidebar } from "./SidebarContext";
 
 const NAV = [
   { icon: "home-outline", activeIcon: "home", label: "Home", screen: "Home" },
@@ -52,10 +53,17 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
   const { theme, fontSizes } = useTheme();
   const { user, getInitials, setUser } = useUser();
   const { unreadCount } = useNotifications();
+  const { closeSidebar } = useSidebar();
   const [showLogout, setShowLogout] = useState(false);
+
+  const navigateTo = (screen: string) => {
+    closeSidebar();
+    navigation.navigate(screen);
+  };
 
   const logout = () => {
     setShowLogout(false);
+    closeSidebar();
     setUser(null);
     navigation.navigate("Welcome");
   };
@@ -67,20 +75,30 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
         { backgroundColor: theme.sidebarBg, borderRightColor: theme.border },
       ]}
     >
-      {/* Logo */}
+      {/* Logo and close button */}
       <View style={styles.logo}>
-        <View style={styles.logoBadge}>
-          <Ionicons name="school" size={18} color="#FFFFFF" />
+        <View style={styles.logoBrand}>
+          <View style={styles.logoBadge}>
+            <Ionicons name="school" size={18} color="#FFFFFF" />
+          </View>
+          <Text
+            style={[
+              styles.logoText,
+              { color: theme.primary, fontSize: fontSizes.md },
+            ]}
+          >
+            Hive
+          </Text>
+          <FloatingBee size={18} />
         </View>
-        <Text
-          style={[
-            styles.logoText,
-            { color: theme.primary, fontSize: fontSizes.md },
-          ]}
+        <TouchableOpacity
+          style={[styles.closeIconBtn, { backgroundColor: theme.inputBg || theme.card }]}
+          onPress={closeSidebar}
+          accessibilityRole="button"
+          accessibilityLabel="Close sidebar"
         >
-          Hive
-        </Text>
-        <FloatingBee size={18} />
+          <Ionicons name="close" size={18} color={theme.textSecondary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -116,7 +134,7 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
                     marginTop: 6,
                   },
                 ]}
-                onPress={() => navigation.navigate(item.screen)}
+                onPress={() => navigateTo(item.screen)}
                 accessibilityRole="button"
                 accessibilityLabel={`Navigate to ${item.label}`}
                 accessibilityState={{ selected: active }}
@@ -186,7 +204,7 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
 
         <TouchableOpacity
           style={styles.createBtn}
-          onPress={() => navigation.navigate("CreateGroup")}
+          onPress={() => navigateTo("CreateGroup")}
           accessibilityRole="button"
           accessibilityLabel="Create a new group"
         >
@@ -201,7 +219,7 @@ export default function Sidebar({ navigation, activeScreen }: Props) {
       <View style={[styles.footer, { borderTopColor: theme.borderLight }]}>
         <TouchableOpacity
           style={styles.profileRow}
-          onPress={() => navigation.navigate("Profile")}
+          onPress={() => navigateTo("Profile")}
           accessibilityRole="button"
           accessibilityLabel="View your profile"
         >
@@ -320,9 +338,21 @@ const styles = StyleSheet.create({
   logo: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    justifyContent: "space-between",
     marginBottom: Spacing.xl,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
+  },
+  logoBrand: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  closeIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoBadge: {
     width: 36,

@@ -41,6 +41,7 @@ import {
 } from "../../components/groupCache";
 import { useNotifications } from "../../components/NotificationContext";
 import Sidebar from "../../components/Sidebar";
+import { useSidebar } from "../../components/SidebarContext";
 import { useTheme } from "../../components/ThemeContext";
 import CategoryChip from "../../components/ui/CategoryChip";
 import EmptyState from "../../components/ui/EmptyState";
@@ -51,6 +52,7 @@ import ScreenTransition from "../../components/ui/ScreenTransition";
 import SkeletonCard from "../../components/ui/SkeletonCard";
 import { useUser } from "../../components/UserContext";
 import { useResponsive } from "../../components/useResponsive";
+import WebHeader from "../../components/WebHeader";
 import { getCategoryVectorIcon, CATEGORY_VECTOR_ICONS } from "../../constants/categories";
 import { Radii, Shadows, Spacing } from "../../constants/theme";
 
@@ -532,6 +534,26 @@ export default function HomeScreen({ navigation }: any) {
   const { theme, fontSizes, isDarkMode } = useTheme();
   const { unreadCount, refreshUnread } = useNotifications();
   const { user, getInitials } = useUser();
+  const { isSidebarVisible, toggleSidebar, closeSidebar } = useSidebar();
+
+  // Web sidebar animation refs
+  const webSidebarX = useRef(new Animated.Value(-260)).current;
+  const webOverlayOpacity = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (isMobile) return;
+    if (isSidebarVisible) {
+      Animated.parallel([
+        Animated.spring(webSidebarX, { toValue: 0, useNativeDriver: true, tension: 100, friction: 12 }),
+        Animated.timing(webOverlayOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.spring(webSidebarX, { toValue: -260, useNativeDriver: true, tension: 100, friction: 12 }),
+        Animated.timing(webOverlayOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [isSidebarVisible, isMobile, webSidebarX, webOverlayOpacity]);
 
   const initialCachedGroups = getCachedAllGroups() || [];
   const initialCachedJoined = getCachedMyGroupIds() || [];
@@ -1363,15 +1385,42 @@ export default function HomeScreen({ navigation }: any) {
     );
   }
 
-  // ── WEB & TABLET LAYOUT WITH PERSISTENT SIDEBAR ──
+  // ── WEB & TABLET LAYOUT WITH COLLAPSIBLE SIDEBAR ──
   return (
     <View style={[styles.webRoot, { backgroundColor: theme.bg }]}>
-      <Sidebar navigation={navigation} activeScreen="Home" />
+      {/* WebHeader with hamburger toggle */}
+      <WebHeader
+        title="Home"
+        navigation={navigation}
+        isSidebarVisible={isSidebarVisible}
+        onToggleSidebar={toggleSidebar}
+      />
+
+      {/* Main content takes full width */}
       <View style={[styles.webContentContainer, { position: "relative" }]}>
         <ScreenTransition>
           {content}
         </ScreenTransition>
       </View>
+
+      {/* Overlay backdrop when sidebar is open */}
+      {isSidebarVisible && (
+        <TouchableWithoutFeedback onPress={closeSidebar}>
+          <Animated.View style={[styles.webOverlay, { opacity: webOverlayOpacity }]} />
+        </TouchableWithoutFeedback>
+      )}
+
+      {/* Sliding sidebar drawer */}
+      <Animated.View style={[
+        styles.webSidebar,
+        {
+          width: 260,
+          backgroundColor: theme.sidebarBg,
+          transform: [{ translateX: webSidebarX }],
+        },
+      ]}>
+        <Sidebar navigation={navigation} activeScreen="Home" />
+      </Animated.View>
     </View>
   );
 }
@@ -1379,8 +1428,21 @@ export default function HomeScreen({ navigation }: any) {
 const styles: any = StyleSheet.create({
   safe: { flex: 1 },
   mobileRoot: { flex: 1 },
-  webRoot: { flexDirection: "row", flex: 1 },
+  webRoot: { flexDirection: "column", flex: 1 },
   webContentContainer: { flex: 1 },
+  webOverlay: {
+    position: "absolute",
+    top: 0, bottom: 0, left: 0, right: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    zIndex: 99,
+  },
+  webSidebar: {
+    position: "absolute",
+    top: 0, bottom: 0, left: 0,
+    zIndex: 100,
+    elevation: 20,
+    ...(Platform.OS === "web" ? { boxShadow: "4px 0 24px rgba(0,0,0,0.15)" } as any : {}),
+  },
   scroll: { flex: 1 },
   scrollContent: {
     paddingVertical: Spacing.md,
